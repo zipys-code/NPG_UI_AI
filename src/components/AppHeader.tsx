@@ -82,9 +82,9 @@ export default function AppHeader() {
   return (
     <header
       ref={headerRef}
-      className="bg-[hsl(210,20%,97%)] border-b border-border"
+      className="bg-[hsl(210,20%,97%)] border-b border-border h-16 max-h-16"
     >
-      <div className="flex flex-row-reverse items-center justify-between px-4 py-2">
+      <div className="flex flex-row-reverse items-center justify-between px-4 h-full">
         {/* Right side - Logo and title */}
         <div className="flex items-center gap-2 shrink-0">
           <div className="flex items-center gap-0.5">
