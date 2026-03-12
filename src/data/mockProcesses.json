@@ -1,0 +1,72 @@
+[
+  {
+    "id": "REQ-10234",
+    "groupNumber": "GRP-501",
+    "customerId": "CUST-8801",
+    "operator": "הוט מובייל",
+    "network": "פלאפון",
+    "processType": "ניוד רגיל",
+    "status": "בתהליך",
+    "stage": "אימות",
+    "date": "2026-03-11T08:30:00",
+    "mobileNumber": "054-1234567",
+    "sourceOperator": "הוט מובייל",
+    "targetOperator": "פלאפון"
+  },
+  {
+    "id": "REQ-10235",
+    "groupNumber": "GRP-502",
+    "customerId": "CUST-8802",
+    "operator": "פרטנר",
+    "network": "סלקום",
+    "processType": "ניוד מהיר",
+    "status": "הושלם",
+    "stage": "סיום",
+    "date": "2026-03-10T14:15:00",
+    "mobileNumber": "050-9876543",
+    "sourceOperator": "פרטנר",
+    "targetOperator": "סלקום"
+  },
+  {
+    "id": "REQ-10236",
+    "groupNumber": "GRP-503",
+    "customerId": "CUST-8803",
+    "operator": "סלקום",
+    "network": "הוט מובייל",
+    "processType": "ניוד רגיל",
+    "status": "נדחה",
+    "stage": "בדיקה",
+    "date": "2026-03-09T10:00:00",
+    "mobileNumber": "052-5551234",
+    "sourceOperator": "סלקום",
+    "targetOperator": "הוט מובייל"
+  },
+  {
+    "id": "REQ-10237",
+    "groupNumber": "GRP-504",
+    "customerId": "CUST-8804",
+    "operator": "גולן טלקום",
+    "network": "פרטנר",
+    "processType": "ניוד רגיל",
+    "status": "ממתין",
+    "stage": "קליטה",
+    "date": "2026-03-11T16:45:00",
+    "mobileNumber": "058-7771234",
+    "sourceOperator": "גולן טלקום",
+    "targetOperator": "פרטנר"
+  },
+  {
+    "id": "REQ-10238",
+    "groupNumber": "GRP-505",
+    "customerId": "CUST-8805",
+    "operator": "פלאפון",
+    "network": "גולן טלקום",
+    "processType": "ניוד מהיר",
+    "status": "בתהליך",
+    "stage": "אימות",
+    "date": "2026-03-12T09:20:00",
+    "mobileNumber": "053-4441234",
+    "sourceOperator": "פלאפון",
+    "targetOperator": "גולן טלקום"
+  }
+]
