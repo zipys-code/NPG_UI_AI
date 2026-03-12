@@ -58,8 +58,8 @@ export default function AppHeader() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1">
             <span className="w-8 h-8 rounded-full bg-header-accent flex items-center justify-center text-header-foreground font-bold text-sm">N</span>
-            <span className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-header-foreground font-bold text-sm">P</span>
-            <span className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-header-foreground font-bold text-sm">G</span>
+            <span className="w-8 h-8 rounded-full bg-npg-green flex items-center justify-center text-header-foreground font-bold text-sm">P</span>
+            <span className="w-8 h-8 rounded-full bg-npg-amber flex items-center justify-center text-header-foreground font-bold text-sm">G</span>
           </div>
           <h1 className="text-lg font-bold tracking-wide">
             <span className="text-header-accent">מערכת ניוד מספרים</span>

@@ -59,6 +59,10 @@ export default {
           DEFAULT: "hsl(var(--footer-bg))",
           foreground: "hsl(var(--footer-foreground))",
         },
+        npg: {
+          green: "hsl(var(--npg-green))",
+          amber: "hsl(var(--npg-amber))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
