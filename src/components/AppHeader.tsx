@@ -1,12 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
-  Settings,
-  Wrench,
-  Cog,
-  Table2,
-  FileText,
   ChevronDown,
+  Cog,
+  FileText,
+  Settings,
+  Table2,
   User,
+  Wrench,
 } from "lucide-react";
 
 const menuItems = [
@@ -51,7 +51,7 @@ const menuItems = [
   {
     label: "טבלאות ניוד",
     icon: Table2,
-    dropdownItems: ["תכנית מספור ארצית", "נתוני ניוד"],
+    dropdownItems: ["תכנית מספר ארצית", "נתוני ניוד"],
   },
   {
     label: "דוחות",
@@ -69,12 +69,13 @@ export default function AppHeader() {
   const headerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
+    const handler = (event: MouseEvent) => {
+      if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
         setOpenDropdown(null);
         setOperatorOpen(false);
       }
     };
+
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
@@ -83,43 +84,50 @@ export default function AppHeader() {
     <header
       ref={headerRef}
       dir="rtl"
-      className="bg-[hsl(215,28%,17%)] h-16 max-h-16 shrink-0"
+      className="h-16 max-h-16 shrink-0 border-b border-border bg-header text-header-foreground"
     >
-      <div className="flex items-center justify-between h-full px-4">
-        {/* Right side - Logo + Title */}
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="w-7 h-7 rounded-full bg-header-accent flex items-center justify-center text-primary-foreground font-bold text-xs">N</span>
-          <span className="w-7 h-7 rounded-full bg-npg-green flex items-center justify-center text-primary-foreground font-bold text-xs">P</span>
-          <span className="w-7 h-7 rounded-full bg-npg-amber flex items-center justify-center text-primary-foreground font-bold text-xs">G</span>
-          <h1 className="text-sm font-bold text-header-accent mr-1">מערכת ניוד מספרים</h1>
+      <div className="flex h-full w-full items-center justify-between gap-3 px-3 sm:px-4">
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="flex items-center gap-1">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-header-accent text-[11px] font-bold text-primary-foreground">
+              N
+            </span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-npg-green text-[11px] font-bold text-primary-foreground">
+              P
+            </span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-npg-amber text-[11px] font-bold text-primary-foreground">
+              G
+            </span>
+          </div>
+          <h1 className="whitespace-nowrap text-sm font-bold text-header-accent">מערכת ניוד מספרים</h1>
         </div>
 
-        {/* Center - Navigation */}
-        <nav className="flex items-center gap-0">
+        <nav className="flex h-full min-w-0 flex-1 items-center justify-center gap-0.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {menuItems.map((item) => (
-            <div key={item.label} className="relative">
+            <div key={item.label} className="relative shrink-0">
               <button
                 onClick={() =>
                   setOpenDropdown(openDropdown === item.label ? null : item.label)
                 }
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium text-[hsl(0,0%,85%)] hover:text-[hsl(0,0%,100%)] hover:bg-[hsl(215,28%,25%)] transition-colors whitespace-nowrap"
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-header-foreground/90 transition-colors hover:bg-secondary hover:text-header-foreground"
               >
-                <item.icon size={14} />
                 <span>{item.label}</span>
+                <item.icon size={13} className="opacity-80" />
                 <ChevronDown
-                  size={11}
+                  size={12}
                   className={`transition-transform ${openDropdown === item.label ? "rotate-180" : ""}`}
                 />
               </button>
+
               {openDropdown === item.label && (
-                <div className="absolute top-full right-0 mt-1 w-48 bg-card rounded-lg shadow-xl border border-border z-50 py-1 animate-in fade-in slide-in-from-top-2 duration-150">
-                  {item.dropdownItems.map((sub) => (
+                <div className="absolute right-0 top-full z-50 mt-1 w-48 rounded-md border border-border bg-card py-1 text-card-foreground shadow-md">
+                  {item.dropdownItems.map((subItem) => (
                     <button
-                      key={sub}
-                      className="w-full text-right px-4 py-2 text-xs text-card-foreground hover:bg-accent transition-colors"
+                      key={subItem}
                       onClick={() => setOpenDropdown(null)}
+                      className="block w-full px-3 py-1.5 text-right text-xs transition-colors hover:bg-accent"
                     >
-                      {sub}
+                      {subItem}
                     </button>
                   ))}
                 </div>
@@ -128,46 +136,49 @@ export default function AppHeader() {
           ))}
         </nav>
 
-        {/* Left side - User info */}
-        <div className="flex items-center gap-4 shrink-0" dir="ltr">
+        <div className="flex shrink-0 items-center gap-2 text-xs">
+          <div className="rounded-full border border-border bg-secondary px-2 py-1 text-center leading-tight">
+            <div className="font-bold text-header-foreground">NPG</div>
+            <div className="text-[10px] text-muted-foreground">PROD</div>
+          </div>
+
+          <div className="flex items-center gap-1 rounded-full border border-border bg-secondary px-2.5 py-1 text-header-foreground/90">
+            <span>Ori Livne</span>
+            <User size={13} />
+          </div>
+
           <div className="relative">
             <button
-              onClick={() => setOperatorOpen(!operatorOpen)}
-              className="flex items-center gap-1.5 text-xs text-[hsl(0,0%,75%)] hover:text-[hsl(0,0%,100%)] transition-colors"
+              onClick={() => setOperatorOpen((prev) => !prev)}
+              className="flex items-center gap-1 rounded-full border border-border bg-secondary px-2.5 py-1 text-header-foreground/90 transition-colors hover:bg-accent"
             >
-              <ChevronDown size={11} className={`transition-transform ${operatorOpen ? "rotate-180" : ""}`} />
-              <span>מפעיל : {selectedOperator}</span>
+              <span className="whitespace-nowrap">מפעיל: {selectedOperator}</span>
+              <ChevronDown
+                size={12}
+                className={`transition-transform ${operatorOpen ? "rotate-180" : ""}`}
+              />
             </button>
+
             {operatorOpen && (
-              <div className="absolute top-full left-0 mt-1 w-44 bg-card rounded-lg shadow-xl border border-border z-50 py-1 animate-in fade-in slide-in-from-top-2 duration-150">
-                {operators.map((op) => (
+              <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border border-border bg-card py-1 text-card-foreground shadow-md">
+                {operators.map((operator) => (
                   <button
-                    key={op}
-                    className={`w-full text-right px-4 py-2 text-xs transition-colors ${
-                      op === selectedOperator
-                        ? "bg-accent text-accent-foreground font-medium"
-                        : "text-card-foreground hover:bg-accent"
-                    }`}
+                    key={operator}
                     onClick={() => {
-                      setSelectedOperator(op);
+                      setSelectedOperator(operator);
                       setOperatorOpen(false);
                     }}
+                    className={`block w-full px-3 py-1.5 text-right text-xs transition-colors ${
+                      operator === selectedOperator
+                        ? "bg-accent font-medium text-accent-foreground"
+                        : "hover:bg-accent"
+                    }`}
                   >
-                    {op}
+                    {operator}
                   </button>
                 ))}
               </div>
             )}
-          </div>
-
-          <div className="flex items-center gap-1.5 text-xs text-[hsl(0,0%,75%)]">
-            <User size={14} />
-            <span>Ori Livne</span>
-          </div>
-
-          <div className="text-center leading-tight">
-            <div className="text-xs font-bold text-[hsl(0,0%,95%)]">NPG</div>
-            <div className="text-[10px] text-[hsl(0,0%,60%)]">PROD</div>
           </div>
         </div>
       </div>
