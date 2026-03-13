@@ -85,22 +85,25 @@ export default function AppHeader() {
     <header
       ref={headerRef}
       dir="rtl"
-      className="relative z-[1000] w-full border-b border-border bg-header text-header-foreground shadow-sm"
+      //className="relative z-[1000] h-20 shrink-0 border-b border-border bg-header text-header-foreground shadow-sm"
+      className="relative z-[1000] h-20 shrink-0 border-b border-border bg-[#D9E4F0] text-header-foreground shadow-sm"
     >
-      <div className="flex h-16 w-full items-center justify-between gap-3 px-3 sm:px-4">
-
-        {/* לוגו - סידרתי את ה-HTML שיופיע כ-NPG מימין לשמאל ב-RTL */}
-        <div className="flex items-center gap-1">
-          {/* ה-G מופיע ראשון בקוד, לכן ב-RTL הוא יהיה הכי שמאלי */}
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-npg-amber text-[11px] font-bold text-primary-foreground">
-            G
+      <div className="flex h-full w-full items-center justify-between gap-3 px-3 sm:px-4">
+        {/* לוגו NPG - חזרה לצבעי זית וחמרה עם חפיפה מוגברת */}
+        <div className="flex shrink-0 items-center" dir="ltr">
+          {/* N - כחול נייבי עמוק (נשאר כבסיס חזק) */}
+          <span className="z-30 flex h-10 w-10 items-center justify-center rounded-full bg-[#1A365D] text-sm font-bold text-black shadow-inner border border-white/10">
+            N
           </span>
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-npg-green text-[11px] font-bold text-primary-foreground">
+
+          {/* P - ירוק זית עמוק, חופף יותר את ה-N */}
+          <span className="z-20 -ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#556B2F] text-sm font-bold text-black shadow-inner border border-white/10">
             P
           </span>
-          {/* ה-N מופיע אחרון בקוד, לכן ב-RTL הוא יהיה הכי ימני */}
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-header-accent text-[11px] font-bold text-primary-foreground">
-            N
+
+          {/* G - כתום חמרה עשיר, חופף יותר את ה-P */}
+          <span className="z-10 -ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#A0522D] text-sm font-bold text-black shadow-inner border border-white/10">
+            G
           </span>
         </div>
 
@@ -110,11 +113,17 @@ export default function AppHeader() {
             <div key={item.label} className="relative">
               <button
                 onClick={() => setOpenDropdown(openDropdown === item.label ? null : item.label)}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-header-foreground/90 transition-colors hover:bg-secondary"
+                className={`flex items-center gap-1.5 rounded-full border border-blue-200 px-3 py-1.5 text-sm font-bold transition-all shadow-sm ${openDropdown === item.label
+                  ? "bg-white border-blue-400 text-blue-700"
+                  : "bg-white/80 text-header-foreground/90 hover:bg-white"
+                  }`}
               >
-                <span>{item.label}</span>
                 <item.icon size={13} className="opacity-80" />
-                <ChevronDown size={12} className={`transition-transform ${openDropdown === item.label ? "rotate-180" : ""}`} />
+                <span>{item.label}</span>
+                <ChevronDown
+                  size={12}
+                  className={`transition-transform duration-200 ${openDropdown === item.label ? "rotate-180" : ""}`}
+                />
               </button>
 
               {/* התפריט הצף */}
@@ -135,27 +144,30 @@ export default function AppHeader() {
           ))}
         </nav>
 
-
-        <div className="flex shrink-0 items-center gap-2 text-xs">
-          <div className="rounded-full border border-border bg-secondary px-2 py-1 text-center leading-tight">
-            <div className="font-bold text-header-foreground">NPG</div>
-            <div className="text-[10px] text-muted-foreground">PROD</div>
+        <div className="mr-auto flex shrink-0 items-center gap-3">
+          {/* כפתור 1: NPG ייצור */}
+          <div className="flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-2 shadow-sm">
+            <span className="text-sm font-bold text-header-foreground">NPG ייצור</span>
           </div>
 
-          <div className="flex items-center gap-1 rounded-full border border-border bg-secondary px-2.5 py-1 text-header-foreground/90">
-            <span>Ori Livne</span>
-            <User size={13} />
+          {/* כפתור 2: ציפי שורץ */}
+          <div className="flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-2 shadow-sm">
+            <span className="text-sm font-bold text-header-foreground/90">ציפי שורץ</span>
+            <User size={16} className="text-header-foreground/70" />
           </div>
 
+          {/* כפתור 3: מפעיל */}
           <div className="relative">
             <button
               onClick={() => setOperatorOpen((prev) => !prev)}
-              className="flex items-center gap-1 rounded-full border border-border bg-secondary px-2.5 py-1 text-header-foreground/90 transition-colors hover:bg-accent"
+              className="flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-2 transition-colors hover:bg-white shadow-sm"
             >
-              <span className="whitespace-nowrap">מפעיל: {selectedOperator}</span>
+              <span className="text-sm font-bold text-header-foreground/90 whitespace-nowrap">
+                מפעיל: {selectedOperator}
+              </span>
               <ChevronDown
-                size={12}
-                className={`transition-transform ${operatorOpen ? "rotate-180" : ""}`}
+                size={14}
+                className={`text-header-foreground/70 transition-transform duration-200 ${operatorOpen ? "rotate-180" : ""}`}
               />
             </button>
 
@@ -169,8 +181,8 @@ export default function AppHeader() {
                       setOperatorOpen(false);
                     }}
                     className={`block w-full px-3 py-1.5 text-right text-xs transition-colors ${operator === selectedOperator
-                      ? "bg-accent font-medium text-accent-foreground"
-                      : "hover:bg-accent"
+                      ? "bg-accent font-bold text-accent-foreground"
+                      : "hover:bg-accent font-medium"
                       }`}
                   >
                     {operator}
