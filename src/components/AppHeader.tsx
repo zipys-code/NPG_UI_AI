@@ -7,6 +7,7 @@ import {
   Table2,
   User,
   Wrench,
+  LogOut
 } from "lucide-react";
 
 const menuItems = [
@@ -68,7 +69,38 @@ export default function AppHeader() {
   const [operatorOpen, setOperatorOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
 
+  // שיפור: ה-State בודק את ה-sessionStorage כבר ברגע היצירה שלו
+  const [currentUser, setCurrentUser] = useState<{ name: string; domain?: string }>(() => {
+    const savedUser = sessionStorage.getItem("npg_user");
+    if (savedUser) {
+      try {
+        return JSON.parse(savedUser);
+      } catch (e) {
+        return { name: "אורח" };
+      }
+    }
+    return { name: "אורח" };
+  });
+
   useEffect(() => {
+    // פונקציה לעדכון המשתמש
+    const updateUser = () => {
+      const savedUser = sessionStorage.getItem("npg_user");
+      if (savedUser) {
+        try {
+          setCurrentUser(JSON.parse(savedUser));
+        } catch (e) {
+          console.error("שגיאה בקריאת נתוני משתמש");
+        }
+      } else {
+        setCurrentUser({ name: "אורח" });
+      }
+    };
+
+    // האזנה לאירוע 'storage' למקרה שהנתונים משתנים בחלון אחר
+    window.addEventListener('storage', updateUser);
+
+    // סגירת דרוקדאונים בלחיצה בחוץ
     const handler = (event: MouseEvent) => {
       if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
         setOpenDropdown(null);
@@ -77,37 +109,34 @@ export default function AppHeader() {
     };
 
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      window.removeEventListener('storage', updateUser);
+    };
   }, []);
 
   return (
-    // 1. שינוי ב-Header: הסרת ה-max-h וה-shrink-0 שחונקים את הגובה
     <header
       ref={headerRef}
       dir="rtl"
-      //className="relative z-[1000] h-20 shrink-0 border-b border-border bg-header text-header-foreground shadow-sm"
       className="relative z-[1000] h-20 shrink-0 border-b border-border bg-[#D9E4F0] text-header-foreground shadow-sm"
     >
       <div className="flex h-full w-full items-center justify-between gap-3 px-3 sm:px-4">
-        {/* לוגו NPG - חזרה לצבעי זית וחמרה עם חפיפה מוגברת */}
+
+        {/* לוגו NPG */}
         <div className="flex shrink-0 items-center" dir="ltr">
-          {/* N - כחול נייבי עמוק (נשאר כבסיס חזק) */}
           <span className="z-30 flex h-10 w-10 items-center justify-center rounded-full bg-[#1A365D] text-sm font-bold text-black shadow-inner border border-white/10">
             N
           </span>
-
-          {/* P - ירוק זית עמוק, חופף יותר את ה-N */}
           <span className="z-20 -ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#556B2F] text-sm font-bold text-black shadow-inner border border-white/10">
             P
           </span>
-
-          {/* G - כתום חמרה עשיר, חופף יותר את ה-P */}
           <span className="z-10 -ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#A0522D] text-sm font-bold text-black shadow-inner border border-white/10">
             G
           </span>
         </div>
 
-        {/* 2. שינוי ב-Nav: הסרת ה-overflow וה-scrollbar שגרמו לבעיה בצילום המסך */}
+        {/* תפריט ניווט */}
         <nav className="flex h-full items-center justify-center gap-1 px-1">
           {menuItems.map((item) => (
             <div key={item.label} className="relative">
@@ -126,14 +155,13 @@ export default function AppHeader() {
                 />
               </button>
 
-              {/* התפריט הצף */}
               {openDropdown === item.label && (
-                <div className="absolute right-0 top-[calc(100%-10px)] z-[1001] mt-2 w-48 rounded-md border border-border bg-card py-1 shadow-xl">
+                <div className="absolute right-0 top-[calc(100%-10px)] z-[1001] mt-2 w-48 rounded-md border border-border bg-card py-1 shadow-xl animate-in fade-in slide-in-from-top-2">
                   {item.dropdownItems.map((subItem) => (
                     <button
                       key={subItem}
                       onClick={() => setOpenDropdown(null)}
-                      className="block w-full px-3 py-1.5 text-right text-xs hover:bg-accent"
+                      className="block w-full px-3 py-1.5 text-right text-xs hover:bg-accent transition-colors"
                     >
                       {subItem}
                     </button>
@@ -144,19 +172,40 @@ export default function AppHeader() {
           ))}
         </nav>
 
+        {/* צד שמאל: סטטוס ומשתמש */}
         <div className="mr-auto flex shrink-0 items-center gap-3">
-          {/* כפתור 1: NPG ייצור */}
+
           <div className="flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-2 shadow-sm">
             <span className="text-sm font-bold text-header-foreground">NPG ייצור</span>
           </div>
 
-          {/* כפתור 2: ציפי שורץ */}
-          <div className="flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-2 shadow-sm">
-            <span className="text-sm font-bold text-header-foreground/90">ציפי שורץ</span>
-            <User size={16} className="text-header-foreground/70" />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                if (window.confirm("האם אתה בטוח שברצונך להתנתק?")) {
+                  sessionStorage.removeItem("npg_user");
+                  window.location.reload();
+                }
+              }}
+              className="flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-1.5 font-bold text-header-foreground/90 shadow-sm transition-colors hover:bg-red-50 hover:border-red-200 group"
+              title="לחץ להתנתקות"
+            >
+              <div className="flex flex-col items-start leading-none min-w-[60px]">
+                <span className="text-sm group-hover:text-red-600 transition-colors uppercase">
+                  {currentUser.name}
+                </span>
+                {currentUser.domain && (
+                  <span className="text-[10px] opacity-60 font-medium group-hover:text-red-400">
+                    {currentUser.domain}
+                  </span>
+                )}
+              </div>
+              <User size={14} className="group-hover:text-red-600 transition-colors" />
+              <div className="mr-1 border-r border-blue-200 h-4 group-hover:border-red-200" />
+              <LogOut size={12} className="text-slate-400 group-hover:text-red-600 transition-colors" />
+            </button>
           </div>
 
-          {/* כפתור 3: מפעיל */}
           <div className="relative">
             <button
               onClick={() => setOperatorOpen((prev) => !prev)}
@@ -172,7 +221,7 @@ export default function AppHeader() {
             </button>
 
             {operatorOpen && (
-              <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border border-border bg-card py-1 text-card-foreground shadow-md">
+              <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border border-border bg-card py-1 text-card-foreground shadow-md animate-in fade-in slide-in-from-top-1">
                 {operators.map((operator) => (
                   <button
                     key={operator}
