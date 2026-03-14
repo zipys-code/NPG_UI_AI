@@ -9,6 +9,7 @@ import {
   Wrench,
   LogOut
 } from "lucide-react";
+import { APP_CONFIG } from "@/config";
 
 const menuItems = [
   {
@@ -69,50 +70,30 @@ export default function AppHeader() {
   const [operatorOpen, setOperatorOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
 
-  // שיפור: ה-State בודק את ה-sessionStorage כבר ברגע היצירה שלו
-  const [currentUser, setCurrentUser] = useState<{ name: string; domain?: string }>(() => {
+  const [currentUser, setCurrentUser] = useState(() => {
     const savedUser = sessionStorage.getItem("npg_user");
     if (savedUser) {
-      try {
-        return JSON.parse(savedUser);
-      } catch (e) {
-        return { name: "אורח" };
-      }
+      return JSON.parse(savedUser);
     }
-    return { name: "אורח" };
+    return { name: APP_CONFIG.LOGIN_REQUIRED === "N" ? "אורח" : "" };
   });
 
+  const handleLogout = () => {
+    if (window.confirm("האם אתה בטוח שברצונך להתנתק?")) {
+      sessionStorage.clear();
+      window.location.reload();
+    }
+  };
+
   useEffect(() => {
-    // פונקציה לעדכון המשתמש
-    const updateUser = () => {
-      const savedUser = sessionStorage.getItem("npg_user");
-      if (savedUser) {
-        try {
-          setCurrentUser(JSON.parse(savedUser));
-        } catch (e) {
-          console.error("שגיאה בקריאת נתוני משתמש");
-        }
-      } else {
-        setCurrentUser({ name: "אורח" });
-      }
-    };
-
-    // האזנה לאירוע 'storage' למקרה שהנתונים משתנים בחלון אחר
-    window.addEventListener('storage', updateUser);
-
-    // סגירת דרוקדאונים בלחיצה בחוץ
     const handler = (event: MouseEvent) => {
       if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
         setOpenDropdown(null);
         setOperatorOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handler);
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      window.removeEventListener('storage', updateUser);
-    };
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   return (
@@ -125,15 +106,9 @@ export default function AppHeader() {
 
         {/* לוגו NPG */}
         <div className="flex shrink-0 items-center" dir="ltr">
-          <span className="z-30 flex h-10 w-10 items-center justify-center rounded-full bg-[#1A365D] text-sm font-bold text-black shadow-inner border border-white/10">
-            N
-          </span>
-          <span className="z-20 -ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#556B2F] text-sm font-bold text-black shadow-inner border border-white/10">
-            P
-          </span>
-          <span className="z-10 -ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#A0522D] text-sm font-bold text-black shadow-inner border border-white/10">
-            G
-          </span>
+          <span className="z-30 flex h-10 w-10 items-center justify-center rounded-full bg-[#1A365D] text-sm font-bold text-white shadow-inner">N</span>
+          <span className="z-20 -ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#556B2F] text-sm font-bold text-white shadow-inner">P</span>
+          <span className="z-10 -ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#A0522D] text-sm font-bold text-white shadow-inner">G</span>
         </div>
 
         {/* תפריט ניווט */}
@@ -149,22 +124,12 @@ export default function AppHeader() {
               >
                 <item.icon size={13} className="opacity-80" />
                 <span>{item.label}</span>
-                <ChevronDown
-                  size={12}
-                  className={`transition-transform duration-200 ${openDropdown === item.label ? "rotate-180" : ""}`}
-                />
+                <ChevronDown size={12} className={`transition-transform ${openDropdown === item.label ? "rotate-180" : ""}`} />
               </button>
-
               {openDropdown === item.label && (
-                <div className="absolute right-0 top-[calc(100%-10px)] z-[1001] mt-2 w-48 rounded-md border border-border bg-card py-1 shadow-xl animate-in fade-in slide-in-from-top-2">
+                <div className="absolute right-0 top-[calc(100%-10px)] z-[1001] mt-2 w-48 rounded-md border border-border bg-card py-1 shadow-xl">
                   {item.dropdownItems.map((subItem) => (
-                    <button
-                      key={subItem}
-                      onClick={() => setOpenDropdown(null)}
-                      className="block w-full px-3 py-1.5 text-right text-xs hover:bg-accent transition-colors"
-                    >
-                      {subItem}
-                    </button>
+                    <button key={subItem} className="block w-full px-3 py-1.5 text-right text-xs hover:bg-accent">{subItem}</button>
                   ))}
                 </div>
               )}
@@ -174,68 +139,39 @@ export default function AppHeader() {
 
         {/* צד שמאל: סטטוס ומשתמש */}
         <div className="mr-auto flex shrink-0 items-center gap-3">
-
           <div className="flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-2 shadow-sm">
             <span className="text-sm font-bold text-header-foreground">NPG ייצור</span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                if (window.confirm("האם אתה בטוח שברצונך להתנתק?")) {
-                  sessionStorage.removeItem("npg_user");
-                  window.location.reload();
-                }
-              }}
-              className="flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-1.5 font-bold text-header-foreground/90 shadow-sm transition-colors hover:bg-red-50 hover:border-red-200 group"
-              title="לחץ להתנתקות"
-            >
-              <div className="flex flex-col items-start leading-none min-w-[60px]">
-                <span className="text-sm group-hover:text-red-600 transition-colors uppercase">
-                  {currentUser.name}
-                </span>
-                {currentUser.domain && (
-                  <span className="text-[10px] opacity-60 font-medium group-hover:text-red-400">
-                    {currentUser.domain}
-                  </span>
-                )}
-              </div>
-              <User size={14} className="group-hover:text-red-600 transition-colors" />
-              <div className="mr-1 border-r border-blue-200 h-4 group-hover:border-red-200" />
-              <LogOut size={12} className="text-slate-400 group-hover:text-red-600 transition-colors" />
-            </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-1.5 font-bold shadow-sm">
+              <span className="text-sm uppercase text-slate-700">{currentUser.name}</span>
+              <User size={14} className="text-blue-500" />
+            </div>
+
+            {APP_CONFIG.LOGIN_REQUIRED === "Y" && currentUser.name !== "אורח" && (
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-full hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
+                title="התנתק"
+              >
+                <LogOut size={16} />
+              </button>
+            )}
           </div>
 
           <div className="relative">
             <button
               onClick={() => setOperatorOpen((prev) => !prev)}
-              className="flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-2 transition-colors hover:bg-white shadow-sm"
+              className="flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-2 hover:bg-white shadow-sm"
             >
-              <span className="text-sm font-bold text-header-foreground/90 whitespace-nowrap">
-                מפעיל: {selectedOperator}
-              </span>
-              <ChevronDown
-                size={14}
-                className={`text-header-foreground/70 transition-transform duration-200 ${operatorOpen ? "rotate-180" : ""}`}
-              />
+              <span className="text-sm font-bold text-header-foreground/90 whitespace-nowrap">מפעיל: {selectedOperator}</span>
+              <ChevronDown size={14} className={`transition-transform ${operatorOpen ? "rotate-180" : ""}`} />
             </button>
-
             {operatorOpen && (
-              <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border border-border bg-card py-1 text-card-foreground shadow-md animate-in fade-in slide-in-from-top-1">
-                {operators.map((operator) => (
-                  <button
-                    key={operator}
-                    onClick={() => {
-                      setSelectedOperator(operator);
-                      setOperatorOpen(false);
-                    }}
-                    className={`block w-full px-3 py-1.5 text-right text-xs transition-colors ${operator === selectedOperator
-                      ? "bg-accent font-bold text-accent-foreground"
-                      : "hover:bg-accent font-medium"
-                      }`}
-                  >
-                    {operator}
-                  </button>
+              <div className="absolute left-0 top-full z-50 mt-1 w-44 rounded-md border border-border bg-card py-1 shadow-md">
+                {operators.map((op) => (
+                  <button key={op} onClick={() => { setSelectedOperator(op); setOperatorOpen(false); }} className="block w-full px-3 py-1.5 text-right text-xs hover:bg-accent">{op}</button>
                 ))}
               </div>
             )}

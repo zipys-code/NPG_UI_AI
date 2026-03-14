@@ -1,0 +1,61 @@
+.detailsContainer {
+    padding: 1.5rem;
+    overflow: hidden;
+    position: sticky;
+    left: 0;
+    width: 100vw;
+    max-width: 100%;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 2rem;
+}
+
+.card {
+    background-color: white;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid #e2e8f0;
+    /* slate-200 */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 0.5rem;
+    color: #1d4ed8;
+    /* blue-700 */
+    font-weight: bold;
+    font-size: 0.875rem;
+}
+
+.dataRow {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.label {
+    color: #94a3b8;
+    /* slate-400 */
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.value {
+    color: #334155;
+    /* slate-700 */
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.errorText {
+    color: #dc2626;
+    /* red-600 */
+}

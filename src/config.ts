@@ -1,14 +1,19 @@
+// src/config.ts
+
 export const APP_CONFIG = {
-    // נלקח מה-.env
-    SERVER_URL: import.meta.env.VITE_NPG_SERVER_URL || 'http://localhost:3000',
-    DEFAULT_SELFNETWORKID: import.meta.env.VITE_DEFAULT_SELFNETWORKID || '316',
+    // שינוי הכתובת ל-Proxy המקומי כדי לעקוף בעיות CORS
+    BASE_URL: "/api",
+
+    DEFAULT_SELFNETWORKID: '316',
 
     // קבועים לוגיים (Patterns)
-    LRN_PATTERN: /^[D]\d{3}$/, // הפכתי את זה ל-Regex אמיתי לשימוש קל
+    LRN_PATTERN: /^[D]\d{3}$/,
 
-    // אפשר להוסיף כאן עוד הגדרות גלובליות
+    // הגדרות גלובליות
     APP_NAME: "מערכת ניוד מספרים NPG",
     VERSION: "1.0.0",
     LOGIN_REQUIRED: "Y",
-    DOMAIN_REQUIRED: "N", // האם שדה הדומיין חובה במודאל
+    DOMAIN_REQUIRED: "N",
+    DEFAULT_DOMAIN: "",
+    SESSION_DURATION_MINUTES: 120, // שעתיים
 };

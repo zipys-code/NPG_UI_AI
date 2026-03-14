@@ -6,8 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useState } from "react";
 import { APP_CONFIG } from "@/config";
 import { LoginModal } from "@/components/LoginModal";
-import AppHeader from "@/components/AppHeader"; // ייבוא ה-Header
-import ProcessManagement from "./pages/ProcessManagement"; // הדף החדש שלך
+import AppHeader from "@/components/AppHeader";
+import ProcessManagement from "./pages/ProcessManagement";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -15,38 +15,62 @@ const queryClient = new QueryClient();
 const App = () => {
   const isLoginRequired = APP_CONFIG.LOGIN_REQUIRED === "Y";
 
-  // בדיקה האם המשתמש מחובר (בודק את האובייקט npg_user)
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+  const checkSession = () => {
     if (!isLoginRequired) return true;
-    return sessionStorage.getItem("npg_user") !== null;
-  });
 
-  // פונקציית הצלחה בלוגין
-  const handleLoginSuccess = (userData: { name: string; domain?: string }) => {
+    const savedUser = sessionStorage.getItem("npg_user");
+    const loginTime = sessionStorage.getItem("npg_login_time");
+
+    if (!savedUser || !loginTime) return false;
+
+    const currentTime = new Date().getTime();
+    const elapsedMinutes = (currentTime - parseInt(loginTime)) / 1000 / 60;
+
+    // בדיקה מול הערך ב-Config (דיפולט שעתיים)
+    if (elapsedMinutes > (APP_CONFIG.SESSION_DURATION_MINUTES || 120)) {
+      sessionStorage.clear();
+      return false;
+    }
+    return true;
+  };
+
+  const [isAuthenticated, setIsAuthenticated] = useState(checkSession());
+
+  const handleLoginSuccess = (userData: any) => {
     sessionStorage.setItem("npg_user", JSON.stringify(userData));
+    sessionStorage.setItem("npg_login_time", new Date().getTime().toString());
     setIsAuthenticated(true);
-    window.location.reload(); // רענון כדי לעדכן את ה-Header
   };
 
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Sonner />
+        <Sonner
+          dir="rtl"
+          position="bottom-right"
+          expand={false}
+          richColors // מאפשר צבעים עשירים מובנים (אדום לשגיאה, ירוק להצלחה)
+          toastOptions={{
+            // כאן אנחנו מגדירים סטייל שיחול על כל הודעות השגיאה באופן אוטומטי
+            style: {
+              fontFamily: 'system-ui, sans-serif',
+            },
+            // הגדרות ספציפיות לפי סוג ההודעה
+            className: "my-toast-class",
+          }}
+        />
 
-        {/* הצגת המודאל אם המשתמש לא מחובר */}
         {!isAuthenticated && isLoginRequired && (
           <LoginModal onSuccess={handleLoginSuccess} />
         )}
 
-        {/* הצגת התוכן רק אם מחובר */}
-        {isAuthenticated && (
+        {(!isLoginRequired || isAuthenticated) && (
           <div className="min-h-screen bg-slate-50">
-            <AppHeader /> {/* ה-Header מופיע מעל הכל */}
+            <AppHeader />
             <main>
               <BrowserRouter>
                 <Routes>
-                  {/* דף הבית מציג כעת את ניהול התהליכים */}
                   <Route path="/" element={<ProcessManagement />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>

@@ -7,12 +7,25 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    port: 8081, // מותאם לפורט שבו את משתמשת בדפדפן
     hmr: {
       overlay: false,
     },
+    // הגדרת הפרוקסי לעקיפת CORS
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8183',
+        changeOrigin: true,
+        secure: false,
+        // מסיר את המילה /api לפני שהבקשה נשלחת ל-Tibco
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [
+    react(),
+    mode === "development" && componentTagger()
+  ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
