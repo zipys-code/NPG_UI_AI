@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ProcessFilters } from '../components/ProcessFilters';
-import { ProcessDetails } from '../components/ProcessDetails'; // ייבוא הקומפוננטה החדשה
+import { ProcessDetails } from '../components/ProcessDetails';
 import { Plus, Info, ArrowUpDown } from 'lucide-react';
 import { apiRequest } from '../services/api';
 import { toast } from 'sonner';
+import { APP_CONFIG } from '../config'; // ייבוא הקונפיג לצורך בדיקת LOGIN_REQUIRED
 
 const COL_NAMES = [
     '', 'מזהה תהליך', 'מזהה בקשה', 'ממספר/בדיד', 'עד מספר/בדיד',
@@ -17,7 +18,7 @@ const COL_NAMES = [
 export default function ProcessManagement() {
     const [displayData, setDisplayData] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [userPermissions, setUserPermissions] = useState({ canAdd: false });
+    const [userPermissions, setUserPermissions] = useState({ canAdd: false, userName: "אורח" });
     const [hasSearched, setHasSearched] = useState(false);
     const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
 
@@ -35,12 +36,28 @@ export default function ProcessManagement() {
     };
 
     useEffect(() => {
-        const savedUser = sessionStorage.getItem("npg_user");
-        if (savedUser) {
-            const userData = JSON.parse(savedUser);
+        // 1. בדיקה אם אנחנו במצב Preview/ללא לוגין
+        if (APP_CONFIG.LOGIN_REQUIRED === "N") {
+            sessionStorage.removeItem("npg_user"); // ניקוי שאריות ישנות
             setUserPermissions({
-                canAdd: userData.permissions?.canAddProcess || false
+                canAdd: true,
+                userName: "אורח"
             });
+        } else {
+            // 2. מצב עבודה רגיל
+            const savedUser = sessionStorage.getItem("npg_user");
+            if (savedUser) {
+                try {
+                    const userData = JSON.parse(savedUser);
+                    setUserPermissions({
+                        canAdd: userData.permissions?.canAddProcess || false,
+                        userName: userData.userName || "אורח"
+                    });
+                } catch (e) {
+                    console.error("Failed to parse user", e);
+                    setUserPermissions({ canAdd: false, userName: "אורח" });
+                }
+            }
         }
     }, []);
 
@@ -54,7 +71,7 @@ export default function ProcessManagement() {
         if (response && response.processes) {
             setDisplayData(response.processes);
         } else {
-            // Mock data for development
+            // נתוני Mock לצורך פיתוח ותצוגה ב-Preview
             const mockData = Array.from({ length: 5 }).map((_, i) => ({
                 id: i + 1,
                 processId: `PRC-500${i}`,
@@ -90,7 +107,9 @@ export default function ProcessManagement() {
         <div className="p-4 bg-slate-50 min-h-screen font-sans" dir="rtl">
             <div className="max-w-[1600px] mx-auto flex justify-between items-end mb-4">
                 <div>
-                    <h1 className="text-lg font-bold text-slate-800">ניהול תהליכים</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-lg font-bold text-slate-800">ניהול תהליכים</h1>
+                    </div>
                     <p className="text-slate-400 text-[10px]">
                         {hasSearched ? `נמצאו ${displayData.length} תהליכים` : "אנא בצע חיפוש להצגת נתונים"}
                     </p>
@@ -182,7 +201,6 @@ export default function ProcessManagement() {
                                             {expandedRowId === proc.id && (
                                                 <tr className="bg-slate-50 shadow-inner animate-in fade-in slide-in-from-top-1 duration-200">
                                                     <td colSpan={COL_NAMES.length} className="p-0 border-b-2 border-blue-200">
-                                                        {/* קריאה לקומפוננטה המופרדת */}
                                                         <ProcessDetails proc={proc} />
                                                     </td>
                                                 </tr>
