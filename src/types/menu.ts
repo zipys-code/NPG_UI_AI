@@ -1,22 +1,27 @@
 // src/types/menu.ts
 
+// יצירת Type עזר שתומך גם באובייקט {"$": string} וגם ב-string פשוט
+type FlexibleString = string | { "$": string };
+
 export interface MenuDataItem {
-    text: { "$": string };
-    view: { "$": string };
+    text: FlexibleString;
+    view?: FlexibleString;
 }
 
-export interface MenuDoc {  // ודאי שיש כאן export
-    text: { "$": string };
-    menuName: { "$": string };
-    items: {
+export interface MenuDoc {
+    text: FlexibleString;
+    menuName?: FlexibleString;
+    items?: {
         item: MenuDataItem | MenuDataItem[];
     };
+    // תמיכה בקינון הכפול שראינו ב-Preview
+    menuDoc?: MenuDoc | MenuDoc[];
 }
 
-export interface GetMenuListResponse { // ודאי שיש כאן export
+export interface GetMenuListResponse {
     grp: {
         menuList: {
-            menuDoc: MenuDoc[];
+            menuDoc: MenuDoc | MenuDoc[];
         };
     };
 }

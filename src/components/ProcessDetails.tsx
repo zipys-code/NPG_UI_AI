@@ -18,13 +18,13 @@ export const ProcessDetails: React.FC<ProcessDetailsProps> = ({ proc }) => {
                     </div>
                     <div className={styles.dataRow}>
                         <span className={styles.label}>מזהה לקוח:</span>
-                        <span className={styles.value}>{proc.custId}</span>
+                        <span className={styles.value}>{proc.customerId || '---'}</span>
                         <span className={styles.label}>פרופיל:</span>
-                        <span className={styles.value}>{proc.profile}</span>
+                        <span className={styles.value}>{proc.customerProfile || '---'}</span>
                         <span className={styles.label}>מספר הזמנה:</span>
-                        <span className={styles.value}>{proc.orderId}</span>
+                        <span className={styles.value}>{proc.orderId || '---'}</span>
                         <span className={styles.label}>מספר קבוצה:</span>
-                        <span className={styles.value}>{proc.groupId}</span>
+                        <span className={styles.value}>{proc.groupId || '---'}</span>
                     </div>
                 </div>
 
@@ -36,13 +36,13 @@ export const ProcessDetails: React.FC<ProcessDetailsProps> = ({ proc }) => {
                     </div>
                     <div className={styles.dataRow}>
                         <span className={styles.label}>הפצות חסרות:</span>
-                        <span className={styles.value}>{proc.missDist}</span>
+                        <span className={styles.value}>{proc.missDist || 0}</span>
                         <span className={styles.label}>הפצות שנכשלו:</span>
-                        <span className={`${styles.value} ${styles.errorText}`}>{proc.failDist}</span>
+                        <span className={`${styles.value} ${proc.failDist ? styles.errorText : ''}`}>{proc.failDist || 0}</span>
                         <span className={styles.label}>קוד שגיאה:</span>
-                        <span className={`${styles.value} ${styles.errorText}`}>{proc.errCode}</span>
+                        <span className={`${styles.value} ${proc.errorCode ? styles.errorText : ''}`}>{proc.errorCode || 'אין'}</span>
                         <span className={styles.label}>סיבת מעבר:</span>
-                        <span className={styles.value}>{proc.reason}</span>
+                        <span className={styles.value}>{proc.reasonDesc || '---'}</span>
                     </div>
                 </div>
 
@@ -54,11 +54,11 @@ export const ProcessDetails: React.FC<ProcessDetailsProps> = ({ proc }) => {
                     </div>
                     <div className={styles.dataRow}>
                         <span className={styles.label}>מוביל קולט:</span>
-                        <span className={styles.value}>{proc.leadRec}</span>
+                        <span className={styles.value}>{proc.leadRec || '---'}</span>
                         <span className={styles.label}>מוביל ננטש:</span>
-                        <span className={styles.value}>{proc.leadAbd}</span>
+                        <span className={styles.value}>{proc.leadAbd || '---'}</span>
                         <span className={styles.label}>מספר מוחלף:</span>
-                        <span className={styles.value}>{proc.replacedNum}</span>
+                        <span className={styles.value}>{proc.replacedNum || '---'}</span>
                     </div>
                 </div>
             </div>

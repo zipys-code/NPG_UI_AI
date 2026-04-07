@@ -1,165 +1,224 @@
-import { useState } from "react";
-import { Plus, Search, RotateCcw, ChevronUp, ChevronDown, List } from "lucide-react";
-import mockProcesses from "@/data/mockProcesses.json";
+import React, { useState } from "react";
+import { Plus, List, Loader2, FileDown, Wrench } from "lucide-react";
+import { ProcessFilters } from "@/components/ProcessFilters";
+import { searchProcesses, getProcessManipulation, setProcesses } from "@/services/api";
+import { useApp } from "@/context/AppContext";
+import { toast } from "sonner";
+import { ProcessDetails } from "@/components/ProcessDetails";
+import { ProcessActionModal } from "@/components/ProcessActionModal";
+import * as XLSX from 'xlsx';
 
-const processTypes = ["-ללא-", "ניוד רגיל", "ניוד מהיר"];
-const statuses = ["-ללא-", "בתהליך", "הושלם", "נדחה", "ממתין"];
-const stages = ["-ללא-", "קליטה", "אימות", "בדיקה", "סיום"];
-const numberFilters = ["-ללא-", "מתחיל ב", "מכיל", "שווה ל"];
-const operatorFilters = ["-ללא-", "הוט מובייל", "פרטנר", "סלקום", "פלאפון", "גולן טלקום"];
-const networkFilters = ["-ללא-", "הוט מובייל", "פרטנר", "סלקום", "פלאפון", "גולן טלקום"];
-const profileFilters = ["-ללא-", "פרופיל A", "פרופיל B", "פרופיל C"];
+interface ProcessManagementProps {
+  mode?: 'VIEW' | 'MANAGE';
+}
 
-type Process = typeof mockProcesses[number];
+export default function ProcessManagement({ mode = 'MANAGE' }: ProcessManagementProps) {
+  const isManageMode = mode === 'MANAGE';
+  const { currentNetworkId, currentUser } = useApp();
 
-const statusColor: Record<string, string> = {
-  "בתהליך": "bg-amber-100 text-amber-800",
-  "הושלם": "bg-emerald-100 text-emerald-800",
-  "נדחה": "bg-red-100 text-red-800",
-  "ממתין": "bg-blue-100 text-blue-800",
-};
-
-export default function ProcessManagement() {
-  const [filterOpen, setFilterOpen] = useState(true);
-  const [results, setResults] = useState<Process[]>([]);
+  // --- States ---
+  const [results, setResults] = useState<any[]>([]);
   const [searched, setSearched] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [lastFilters, setLastFilters] = useState<any>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const handleSearch = () => {
-    setResults(mockProcesses);
-    setSearched(true);
+  // --- States למודאל התפעול ---
+  const [isActionModalOpen, setIsActionModalOpen] = useState(false);
+  const [manipulationData, setManipulationData] = useState<any>(null);
+
+  // --- לוגיקת חיפוש ---
+  const handleSearch = async (filterValues: any) => {
+    setIsLoading(true);
+    setResults([]);
+    setSelectedIds([]);
+    setLastFilters(filterValues);
+    try {
+      const response = await searchProcesses(filterValues, currentNetworkId || "320");
+
+      // חילוץ לפי המבנה הנקי (ללא .root)
+      const notification = response?.notification;
+
+      if (notification?.msgCode === 1000 || notification?.msgCode === "1000") {
+        const data = response?.data?.row || [];
+        const finalData = Array.isArray(data) ? data : [data];
+        setResults(finalData);
+        setSearched(true);
+      } else {
+        toast.error(`${notification?.msgBody || "שגיאה בחיפוש"} (${notification?.msgCode || ''})`);
+      }
+    } catch (err) {
+      console.error("Search Error:", err);
+      toast.error("שגיאת תקשורת בביצוע החיפוש");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  // --- פתיחת מודאל תפעול (Get Manipulation Data) ---
+  const handleProcessManipulation = async () => {
+    if (selectedIds.length === 0) return;
+
+    // הכנת רשימת ה-processId (המספריים) מתוך השורות שנבחרו
+    const processIdsToSend = results
+      .filter(row => selectedIds.includes(row.requestId))
+      .map(row => row.processId);
+
+    setIsLoading(true);
+    try {
+      const response = await getProcessManipulation(processIdsToSend, currentNetworkId);
+      const notification = response?.notification;
+
+      if (Number(notification?.msgCode) === 1000) {
+        setManipulationData(response.data);
+        setIsActionModalOpen(true);
+      } else {
+        toast.error(notification?.msgBody || "שגיאה בטעינת נתוני תפעול");
+      }
+    } catch (err) {
+      toast.error("שגיאת תקשורת בטעינת נתוני תפעול");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // --- ביצוע פעולת תפעול (Set Processes) ---
+  const handleActionExecute = async (actionId: string, groupId?: string, additionalData?: any) => {
+    // ולידציה בסיסית
+    if (actionId === 'SET_GROUP' && (!groupId || groupId.trim() === "")) {
+      toast.error("יש למלא ערך בשדה מזהה קבוצת טיפול");
+      return;
+    }
+
+    // אישור משתמש
+    const confirmMsg = actionId === 'M0.1'
+      ? "האם את/ה בטוח שברצונך לבטל (Terminate) את התהליכים הנבחרים?"
+      : "אנא אשר/י ביצוע פעולה";
+
+    if (!window.confirm(confirmMsg)) return;
+
+    const processIdsToSend = results
+      .filter(row => selectedIds.includes(row.requestId))
+      .map(row => row.processId);
+
+    let modeApi = "State";
+    if (actionId === 'M0.1') modeApi = "Terminate";
+    if (actionId === 'SET_GROUP') modeApi = "ArbitraryID";
+    if (actionId === 'UPDATE_DATES') modeApi = "Date";
+    if (actionId === 'CANCEL_PORTING') modeApi = "Cancel";
+
+    setIsLoading(true);
+    try {
+      const response = await setProcesses({
+        mode: modeApi,
+        processIds: processIdsToSend,
+        targetState: actionId,
+        groupId: groupId,
+        selfNetworkId: currentNetworkId || "320",
+        roleId: currentUser?.roleId || "NPG_ADMINISTRATOR",
+        userName: currentUser?.name || "System",
+        portingData: additionalData
+      });
+
+      const allMsgs = [
+        ...(response?.notifications?.item || []),
+        ...(response?.validationNotifications?.item || [])
+      ];
+
+      if (allMsgs.length > 0) {
+        allMsgs.forEach((m: any) => {
+          const display = m.processID ? `תהליך ${m.processID}: ${m.msgBody}` : m.msgBody;
+          if (m.msgCode === 1000 || m.msgCode === "1000") toast.success(display);
+          else toast.error(display);
+        });
+
+        // רענון אם הצליח
+        if (allMsgs.some(m => m.msgCode === 1000 || m.msgCode === "1000")) {
+          setIsActionModalOpen(false);
+          setSelectedIds([]);
+          handleSearch(lastFilters);
+        }
+      }
+    } catch (err) {
+      toast.error("שגיאת תקשורת בביצוע הפעולה");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // --- עזרים: בחירה, רענון, אקסל ---
   const handleReset = () => {
     setResults([]);
     setSearched(false);
+    setSelectedIds([]);
+  };
+
+  const handleSelectRow = (requestId: string) => {
+    setSelectedIds(prev =>
+      prev.includes(requestId) ? prev.filter(id => id !== requestId) : [...prev, requestId]
+    );
   };
 
   return (
-    <div className="flex-1 p-6 overflow-auto">
-      {/* Page header */}
+    <div className="flex-1 p-6 overflow-auto" dir="rtl">
+      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <List size={20} className="text-muted-foreground" />
-          <h2 className="text-xl font-bold text-foreground">ניהול תהליכים</h2>
+          <List size={20} className="text-slate-400" />
+          <h2 className="text-xl font-bold text-slate-800">ניהול תהליכים</h2>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-accent transition-colors">
-          <Plus size={16} className="text-primary" />
-          <span>הוסף חדש</span>
-        </button>
       </div>
 
-      {/* Filter card */}
-      <div className="bg-card rounded-xl border border-border shadow-sm mb-6">
-        {/* Filter header */}
-        <button
-          onClick={() => setFilterOpen(!filterOpen)}
-          className="w-full flex items-center justify-between px-6 py-4 text-primary font-semibold text-sm hover:bg-accent/50 transition-colors rounded-t-xl"
-        >
-          <span>סינון נוכחי</span>
-          {filterOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-        </button>
+      <ProcessFilters onFilter={handleSearch} onReset={handleReset} />
 
-        {filterOpen && (
-          <div className="px-6 pb-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
-              {/* Row 1 */}
-              <FormField label="מזהה בקשה" type="text" />
-              <FormField label="סנן לפי מספר" type="select" options={numberFilters} />
-              <div />
+      {isLoading && !isActionModalOpen && (
+        <div className="flex justify-center p-12"><Loader2 className="animate-spin text-blue-600" /></div>
+      )}
 
-              {/* Row 2 */}
-              <FormField label="מספר קבוצה" type="text" />
-              <FormField label="סינון לפי מפעיל" type="select" options={operatorFilters} />
-              <div />
-
-              {/* Row 3 */}
-              <FormField label="מזהה לקוח" type="text" />
-              <FormField label="סינון לפי רשת" type="select" options={networkFilters} />
-              <div />
-
-              {/* Row 4 */}
-              <FormField label="מתאריך" type="datetime" />
-              <FormField label="סוג תהליך" type="select" options={processTypes} />
-              <div />
-
-              {/* Row 5 */}
-              <FormField label="עד תאריך" type="datetime" />
-              <FormField label="סינון לפי מצב" type="select" options={statuses} />
-              <div />
-
-              {/* Row 6 */}
-              <FormField label="מספר מוביל - מפעיל נותש" type="text" />
-              <FormField label="סינון לפי שלב" type="select" options={stages} />
-              <div />
-
-              {/* Row 7 */}
-              <FormField label="מספר מוביל - מפעיל קולט" type="text" />
-              <FormField label="סינון לפי פרופיל לקוח" type="select" options={profileFilters} />
-              <div />
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex items-center gap-3 mt-8 pt-6 border-t border-border justify-start">
-              <button
-                onClick={handleSearch}
-                className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity shadow-sm"
-              >
-                <Search size={16} />
-                <span>בצע חיפוש</span>
-              </button>
-              <button
-                onClick={handleReset}
-                className="flex items-center gap-2 px-6 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors"
-              >
-                <RotateCcw size={16} />
-                <span>איפוס</span>
-              </button>
+      {searched && !isLoading && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-6">
+          <div className="px-6 py-4 border-b bg-slate-50/50 flex justify-between items-center">
+            <h3 className="text-sm font-bold text-slate-700">תוצאות ({results.length})</h3>
+            <div className="flex gap-2">
+              {isManageMode && (
+                <button
+                  disabled={selectedIds.length === 0}
+                  onClick={handleProcessManipulation}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm
+                                        ${selectedIds.length > 0 ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-200 text-slate-400'}`}
+                >
+                  <Wrench size={14} />
+                  טיפול בתהליכים ({selectedIds.length})
+                </button>
+              )}
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Results table */}
-      {searched && (
-        <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-border">
-            <h3 className="text-sm font-semibold text-foreground">
-              תוצאות ({results.length})
-            </h3>
-          </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-muted">
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">מזהה</th>
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">מספר קבוצה</th>
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">מספר טלפון</th>
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">מפעיל מקור</th>
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">מפעיל יעד</th>
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">סוג</th>
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">מצב</th>
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">שלב</th>
-                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground">תאריך</th>
+            <table className="w-full text-right text-sm">
+              <thead className="bg-slate-100 text-[10px] uppercase font-bold text-slate-600">
+                <tr>
+                  <th className="p-3 text-center w-10">בחר</th>
+                  <th className="p-3">מזהה בקשה</th>
+                  <th className="p-3">מספר תהליך</th>
+                  <th className="p-3">סטטוס</th>
+                  {/* ... שאר העמודות שלך ... */}
                 </tr>
               </thead>
-              <tbody>
-                {results.map((proc) => (
-                  <tr key={proc.id} className="border-b border-border last:border-0 hover:bg-accent/30 transition-colors">
-                    <td className="px-4 py-3 font-medium text-primary">{proc.id}</td>
-                    <td className="px-4 py-3">{proc.groupNumber}</td>
-                    <td className="px-4 py-3 font-mono text-xs">{proc.mobileNumber}</td>
-                    <td className="px-4 py-3">{proc.sourceOperator}</td>
-                    <td className="px-4 py-3">{proc.targetOperator}</td>
-                    <td className="px-4 py-3">{proc.processType}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${statusColor[proc.status] || "bg-muted text-muted-foreground"}`}>
-                        {proc.status}
-                      </span>
+              <tbody className="divide-y divide-slate-100">
+                {results.map((row) => (
+                  <tr key={row.requestId} className="hover:bg-blue-50/50 transition-colors">
+                    <td className="p-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(row.requestId)}
+                        onChange={() => handleSelectRow(row.requestId)}
+                      />
                     </td>
-                    <td className="px-4 py-3">{proc.stage}</td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">
-                      {new Date(proc.date).toLocaleDateString("he-IL")}
-                    </td>
+                    <td className="p-3 font-medium text-blue-700">{row.requestId}</td>
+                    <td className="p-3">{row.processId}</td>
+                    <td className="p-3">{row.parentStatus}</td>
                   </tr>
                 ))}
               </tbody>
@@ -167,70 +226,13 @@ export default function ProcessManagement() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
 
-function FormField({
-  label,
-  type,
-  options,
-}: {
-  label: string;
-  type: "text" | "select" | "datetime";
-  options?: string[];
-}) {
-  if (type === "select" && options) {
-    return (
-      <div className="flex items-center gap-3">
-        <label className="text-sm text-foreground font-medium whitespace-nowrap min-w-[140px] text-right">
-          {label}
-        </label>
-        <select className="flex-1 h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-shadow">
-          {options.map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-      </div>
-    );
-  }
-
-  if (type === "datetime") {
-    return (
-      <div className="flex items-center gap-3">
-        <label className="text-sm text-foreground font-medium whitespace-nowrap min-w-[140px] text-right">
-          {label}
-        </label>
-        <div className="flex-1 flex items-center gap-2">
-          <input
-            type="date"
-            defaultValue="2026-03-11"
-            className="flex-1 h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-shadow"
-          />
-          <span className="text-sm text-muted-foreground">שעה:</span>
-          <select className="w-16 h-10 px-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring/30">
-            {Array.from({ length: 24 }, (_, i) => (
-              <option key={i} value={i}>{String(i).padStart(2, "0")}</option>
-            ))}
-          </select>
-          <select className="w-16 h-10 px-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring/30">
-            {[0, 15, 30, 45, 59].map((m) => (
-              <option key={m} value={m}>{String(m).padStart(2, "0")}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-3">
-      <label className="text-sm text-foreground font-medium whitespace-nowrap min-w-[140px] text-right">
-        {label}
-      </label>
-      <input
-        type="text"
-        className="flex-1 h-10 px-3 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-shadow placeholder:text-muted-foreground"
+      {/* מודאל תפעול */}
+      <ProcessActionModal
+        isOpen={isActionModalOpen}
+        onClose={() => setIsActionModalOpen(false)}
+        data={manipulationData}
+        onActionExecute={handleActionExecute}
       />
     </div>
   );

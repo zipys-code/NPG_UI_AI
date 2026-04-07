@@ -36,3 +36,18 @@ export const compareDates = (
 
   return d1 > d2 ? 1 : 0;
 };
+
+// פונקציית עזר להמרה מהפורמט של המסך (ISO) לפורמט טיבקו
+// src/utils/formatters.ts
+
+export const formatForTibco = (dateTimeStr: string) => {
+  if (!dateTimeStr) return { date: '', time: '' };
+
+  const [datePart, timePart] = dateTimeStr.split('T');
+  const [year, month, day] = datePart.split('-');
+
+  return {
+    date: `${day}/${month}/${year}`,
+    time: timePart || '00:00'
+  };
+};

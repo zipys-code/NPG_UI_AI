@@ -9,15 +9,15 @@ import { LoginModal } from "@/components/LoginModal";
 import AppHeader from "@/components/AppHeader";
 import ProcessManagement from "./pages/ProcessManagement";
 import NotFound from "./pages/NotFound.tsx";
+import { Calendar } from "./components/Calendar";
 
-// ייבוא ה-Context והשירותים
 import { AppProvider, useApp } from "@/context/AppContext";
 import { fetchMenuList, fetchLOVs } from "@/services/api";
 
 const queryClient = new QueryClient();
 
 const AppContent = () => {
-  const { setAppData, lovs } = useApp();
+  const { setAppData } = useApp();
   const [isInitializing, setIsInitializing] = useState(true);
   const isLoginRequired = APP_CONFIG.LOGIN_REQUIRED === "Y";
 
@@ -28,11 +28,7 @@ const AppContent = () => {
     if (!savedUser || !loginTime) return false;
     const currentTime = new Date().getTime();
     const elapsedMinutes = (currentTime - parseInt(loginTime)) / 1000 / 60;
-    if (elapsedMinutes > (APP_CONFIG.SESSION_DURATION_MINUTES || 120)) {
-      sessionStorage.clear();
-      return false;
-    }
-    return true;
+    return elapsedMinutes <= (APP_CONFIG.SESSION_DURATION_MINUTES || 120);
   };
 
   const [isAuthenticated, setIsAuthenticated] = useState(checkSession());
@@ -51,19 +47,19 @@ const AppContent = () => {
           lovsSuccess: !!lovsData
         });
 
-        // שינוי קריטי: ממשיכים אם ה-LOV הצליח, גם אם המנו נכשל (כי הוא יתוקן בהמשך)
         if (lovsData) {
-          console.log("3. LOV loaded successfully. Updating Context...");
-          setAppData(menuData, lovsData);
+          console.log("3. Updating Context with received data...");
+          // שליחת אובייקט אחד בדיוק לפי ה-Interface החדש
+          setAppData({ menu: menuData, lovs: lovsData });
         } else {
-          console.warn("3. FAILED: LOV is essential but returned null");
+          console.warn("3. FAILED: LOV data is null");
         }
 
       } catch (error) {
         console.error("4. CRITICAL ERROR during init:", error);
       } finally {
-        console.log("5. Initialization sequence finished");
-        setIsInitializing(false); // שחרור הספינר בכל מצב
+        setIsInitializing(false);
+        console.log("5. Initialization finished");
       }
     };
 
@@ -76,7 +72,6 @@ const AppContent = () => {
     setIsAuthenticated(true);
   };
 
-  // מציגים טעינה רק בזמן שהתהליך initApp רץ
   if (isInitializing) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 font-sans" dir="rtl">
@@ -87,50 +82,45 @@ const AppContent = () => {
   }
 
   return (
-    <>
+    <BrowserRouter>
       <Toaster />
       <Sonner
         dir="rtl"
         position="bottom-right"
-        expand={false}
         richColors
-        toastOptions={{
-          style: { fontFamily: 'system-ui, sans-serif' },
-        }}
+        toastOptions={{ style: { fontFamily: 'sans-serif' } }}
       />
 
-      {/* המודאל יוצג אם המשתמש לא מחובר והאתחול הסתיים */}
       {!isAuthenticated && isLoginRequired && (
         <LoginModal onSuccess={handleLoginSuccess} />
       )}
 
       {(!isLoginRequired || isAuthenticated) && (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-slate-50 flex flex-col">
           <AppHeader />
-          <main>
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<ProcessManagement />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
+          <main className="flex-1 overflow-auto">
+            <Routes>
+              <Route path="/" element={<ProcessManagement mode="VIEW" />} />
+              <Route path="/view-processes" element={<ProcessManagement mode="VIEW" />} />
+              <Route path="/manage-processes" element={<ProcessManagement mode="MANAGE" />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </main>
         </div>
       )}
-    </>
+    </BrowserRouter>
   );
 };
 
-const App = () => {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AppProvider>
-        <TooltipProvider>
-          <AppContent />
-        </TooltipProvider>
-      </AppProvider>
-    </QueryClientProvider>
-  );
-};
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AppProvider>
+      <TooltipProvider>
+        <AppContent />
+      </TooltipProvider>
+    </AppProvider>
+  </QueryClientProvider>
+);
 
 export default App;

@@ -1,55 +1,75 @@
-// src/context/AppContext.tsx
-
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { GetLOVResponse } from '../types/lov';
-import { GetMenuListResponse } from '../types/menu';
+
+// הגדרת המבנה של המשתמש
+interface User {
+    name: string;
+    roleId: string;
+}
 
 interface AppContextType {
-    lovs: GetLOVResponse | null;
-    menu: GetMenuListResponse | null;
-    currentNetworkId: string | null;
-    setAppData: (menuData: any, lovsData: any) => void;
+    lovs: any;
+    menu: any;
+    currentNetworkId: string;
+    currentNetworkName: string;
+    currentUser: User | null;
+    setAppData: (data: { menu: any; lovs: any }) => void; // עדכון ה-Interface לפרמטר אחד
     setCurrentNetworkId: (id: string) => void;
+    setCurrentNetworkName: (name: string) => void;
+    setCurrentUser: (user: User | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-    const [lovs, setLovs] = useState<GetLOVResponse | null>(null);
-    const [menu, setMenu] = useState<GetMenuListResponse | null>(null);
-    const [currentNetworkId, setCurrentNetworkId] = useState<string | null>(null);
+    const [lovs, setLovs] = useState<any>(null);
+    const [menu, setMenu] = useState<any>(null);
+    const [currentNetworkId, setCurrentNetworkId] = useState("320");
+    const [currentNetworkName, setCurrentNetworkName] = useState("");
 
-    const setAppData = useCallback((menuData: any, lovsData: any) => {
-        console.log("!!! AppContext: setAppData called", { menuData, lovsData });
-        if (menuData) setMenu(menuData);
-        if (lovsData) setLovs(lovsData);
+    // טעינת משתמש מ-LocalStorage אם קיים
+    const [currentUser, setCurrentUser] = useState<User | null>(() => {
+        const saved = localStorage.getItem("userData");
+        return saved ? JSON.parse(saved) : null;
+    });
+
+    // --- התיקון הקריטי: מילוי הפונקציה ---
+    const setAppData = useCallback((data: { menu: any; lovs: any }) => {
+        if (data.lovs) {
+            setLovs(data.lovs);
+            console.log("LOVs updated in Context");
+        }
+        if (data.menu) {
+            setMenu(data.menu);
+            console.log("Menu updated in Context");
+        }
     }, []);
 
-    const updateNetworkId = useCallback((id: string) => {
-        console.log("!!! AppContext: currentNetworkId updated to:", id);
-        setCurrentNetworkId(id);
+    const updateCurrentUser = useCallback((user: User | null) => {
+        setCurrentUser(user);
+        if (user) {
+            localStorage.setItem("userData", JSON.stringify(user));
+        } else {
+            localStorage.removeItem("userData");
+        }
     }, []);
 
     const value = {
         lovs,
         menu,
         currentNetworkId,
+        currentNetworkName,
+        currentUser,
         setAppData,
-        setCurrentNetworkId: updateNetworkId
+        setCurrentNetworkId,
+        setCurrentNetworkName,
+        setCurrentUser: updateCurrentUser
     };
 
-    return (
-        <AppContext.Provider value={value}>
-            {children}
-        </AppContext.Provider>
-    );
+    return <AppContext.Provider value={value as AppContextType}>{children}</AppContext.Provider>;
 }
 
-// שינוי צורת הייצוא ל-function רגילה כדי לעזור ל-Vite Fast Refresh
 export function useApp() {
     const context = useContext(AppContext);
-    if (!context) {
-        throw new Error("useApp must be used within AppProvider");
-    }
+    if (!context) throw new Error("useApp must be used within AppProvider");
     return context;
 }
