@@ -161,8 +161,6 @@ export const searchProcesses = async (filters: any, networkId: string | null) =>
             }
         }
     };
-
-    console.log("Sending JSON Request:", requestBody);
     return await apiRequest("/GetProcesses", requestBody);
 };
 
@@ -221,32 +219,76 @@ export const setProcesses = async (params: {
     return await apiRequest("/SetProcesses", payload);
 };
 
-// services/api.ts
 
-export const setAddProcess = async (params: any) => {
+export const setAddProcess = async (formData: any, appContext: any) => {
     const payload = {
-        TOKEN: "dummy_token", // או window.token אם יש
-        SELF_NETWORK_ID: params.selfNetworkId,
-        USER: params.userName,
-        PROCESS_TYPE: params.processType,
-        DN_NUMBER: params.dnNumber,
-        CRM_ORDER_NUM: params.crmOrderNum,
-        CRM_CUSTOMER_ID: params.contractId, // זה "מספר חוזה בילינג" מהקוד הישן
-        BILL_CUSTOMER_ID: params.billCustomerId,
-        REQUESTED_PORT_DATE: params.portedDate,
-        REQUESTED_PORT_TIME: params.portedTime,
-        REQUESTED_EXEC_DATE: params.execDate,
-        REQUESTED_EXEC_TIME: params.execTime,
-        CUSTOMER_ID1: params.customerId1,
-        CUSTOMER_ID2: params.customerId2,
-        CUSTOMER_ID3: params.customerId3,
-        SUB_CORRELATION_ID: params.crmCustomerId, // מזהה לקוח CRM
-        PREPAID: params.prepaid,
-        NETWORK_TYPE: params.networkType,
-        CUSTOMER_PROFILE: params.customerProfile,
-        ACTIVATION_TYPE: params.activationType,
-        DONOR: params.newDonor
+
+        setIn: {
+            user: appContext.currentUser?.name || "testuser",
+            data: {
+                singleForm: {
+                    // --- חלק 1: מזהים וסטטוסים ---
+                    txtProcessID: "",
+                    txtRequestID: "",
+                    txtRequestGroupID: "",
+                    txtProcessStat: "",
+                    slctProcessStat: "",
+
+                    // --- חלק 2: סוגי תהליכים ---
+                    slctProcessType: formData.slctProcessType,
+                    slctDnNetworkType: formData.slctDnNetworkType,
+                    slctDnType: formData.slctDnType,
+
+                    // --- חלק 3: מספרי טלפון ---
+                    txtDnNum: formData.txtDnNum,
+                    txtDnFrom: "",
+                    txtdnTo: "",
+                    txtDonorLeadingNumber: "",
+                    txtRecipentLeadingNumber: "",
+
+                    // --- חלק 4: מפעילים ---
+                    slctRecipientNetworkID: appContext.currentNetworkId, // מפעיל קולט
+                    slctDonorNetworkID: formData.slctDonorNetworkID,    // מפעיל ננטש
+
+                    // --- חלק 5: פרטי לקוח והזמנה (לפי המיפוי הישן) ---
+                    txtZipcode: "",
+                    txtCrmOrderNum: formData.txtCrmOrderNum,
+                    txtCrmCustomerID: formData.txtCrmCustomerID, // זהו ה-SUB_CORRELATION_ID
+                    txtBillCustomerID: formData.txtBillCustomerID,
+                    txtBillContractID: formData.txtBillContractID, // CRM_CUSTOMER_ID מהישן
+
+                    // --- חלק 6: תאריכים ---
+                    txtRequestedPortDate: formData.txtRequestedPortDate,
+                    txtRequestedExecDate: formData.txtRequestedExecDate,
+                    txtActualPortDate: "",
+                    txtActualRouteDate: "",
+                    txtStateTypeID: "",
+                    txtLastUpdateDate: "",
+
+                    // --- חלק 7: שדות נוספים ומזהים (CustomerID 1,2,3) ---
+                    txtTemporaryAttribute_rpar_: formData.txtTemporaryAttribute_rpar_, // PREPAID (N/Y)
+                    txtCustomerID1: formData.txtCustomerID1,
+                    txtCustomerID1Type: formData.txtCustomerID1Type,
+                    txtCustomerID2: formData.txtCustomerID2 || "",
+                    txtCustomerID2Type: "9", // ברירת מחדל ת"ז
+                    txtCustomerID3: formData.txtCustomerID3 || "",
+                    txtCustomerID3Type: "9",
+
+                    // --- חלק 8: זמנים ---
+                    txtRequestedPortTime: formData.txtRequestedPortTime,
+                    txtRequestedExecTime: formData.txtRequestedExecTime,
+                    txtActualPortTime: "",
+                    txtActualRouteTime: "",
+                    txtLastUpdateTime: "",
+                    localInfo: "",
+                    txtNewCrmCustomerId: ""
+                }
+            },
+            token: "",
+            selfNetworkID: appContext.currentNetworkId
+        }
     };
 
-    return await apiRequest("SetAddProcess", payload);
+    console.log("Sending Corrected JSON:", JSON.stringify(payload));
+    return await apiRequest("/SetAddProcess", payload);
 };

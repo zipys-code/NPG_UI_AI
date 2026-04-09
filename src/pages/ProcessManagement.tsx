@@ -226,36 +226,34 @@ export default function ProcessManagement({ mode = 'VIEW' }: ProcessManagementPr
         }
     };
 
-    // בתוך ProcessManagement.tsx
-
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
     const handleAddNewProcess = async (formData: any) => {
         setIsLoading(true);
         try {
-            const response = await setAddProcess({
-                ...formData,
-                selfNetworkId: currentNetworkId || "320",
-                userName: currentUser?.name || "System"
-            });
+            const response = await setAddProcess(
+                formData,
+                { currentNetworkId, currentUser }
+            );
 
-            const notification = response?.root?.setOut?.notification || response?.setOut?.notification;
+            const setOut = response?.setOut || response?.root?.setOut;
+            const msgSource = setOut?.notification?.msg;
+            const msgArray = Array.isArray(msgSource) ? msgSource : (msgSource ? [msgSource] : []);
 
-            if (notification?.msg?.severity?.$ === "SUCCESS") {
-                toast.success("תהליך חדש נוצר בהצלחה!");
-                setIsAddModalOpen(false);
-                handleSearch(lastFilters); // רענון הטבלה
-            } else {
-                toast.error(notification?.msg?.msgBody?.$ || "שגיאה ביצירת תהליך");
+            const hasSuccess = msgArray.some(m => String(m.code) === "1000");
+
+            // רענון רק אם כבר היה חיפוש קודם ויש פילטרים
+            if (hasSuccess && lastFilters) {
+                handleSearch(lastFilters);
             }
+
+            return response;
         } catch (err) {
-            toast.error("שגיאת תקשורת");
+            // ... (השאר ללא שינוי)
         } finally {
             setIsLoading(false);
         }
     };
-
-
 
     return (
         <div className="flex-1 p-6 overflow-auto" dir="rtl">
@@ -430,11 +428,13 @@ export default function ProcessManagement({ mode = 'VIEW' }: ProcessManagementPr
                 onActionExecute={handleActionExecute}
             />
 
-            <AddProcessModal
-                isOpen={isAddModalOpen}
-                onClose={() => setIsAddModalOpen(false)}
-                onSave={handleAddNewProcess}
-            />
+            {isAddModalOpen && (
+                <AddProcessModal
+                    isOpen={isAddModalOpen}
+                    onClose={() => setIsAddModalOpen(false)}
+                    onSave={handleAddNewProcess}
+                />
+            )}
         </div>
     );
 }
