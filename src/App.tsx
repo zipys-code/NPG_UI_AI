@@ -7,9 +7,10 @@ import { useState, useEffect } from "react";
 import { APP_CONFIG } from "@/config";
 import { LoginModal } from "@/components/LoginModal";
 import AppHeader from "@/components/AppHeader";
-import ProcessManagement from "./pages/ProcessManagement";
+import ProcessManagement from './components/ProcessManagement';
 import NotFound from "./pages/NotFound.tsx";
 import { Calendar } from "./components/Calendar";
+import DnRouteNumbers from './components/DnRouteNumbers';
 
 import { AppProvider, useApp } from "@/context/AppContext";
 import { fetchMenuList, fetchLOVs } from "@/services/api";
@@ -104,6 +105,7 @@ const AppContent = () => {
               <Route path="/view-processes" element={<ProcessManagement mode="VIEW" />} />
               <Route path="/manage-processes" element={<ProcessManagement mode="MANAGE" />} />
               <Route path="/calendar" element={<Calendar />} />
+              <Route path="/dnRouteNumbers" element={<DnRouteNumbers />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>

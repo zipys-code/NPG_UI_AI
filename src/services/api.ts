@@ -166,17 +166,19 @@ export const searchProcesses = async (filters: any, networkId: string | null) =>
 
 // src/services/api.ts
 
-export const getProcessManipulation = async (selectedProcessIds: string[], networkId: string | null) => {
+export const getProcessManipulation = async (processes: any[], networkId: string) => {
     const payload = {
         getIn: {
             processIdList: {
-                isCheckedProcesses: selectedProcessIds.map(id => ({
-                    processID: id
+                // המבנה שראינו ב-Payload בתמונה שלך
+                isCheckedProcesses: processes.map(p => ({
+                    processID: p.processID,
+                    requestID: p.requestID
                 }))
             },
             token: "",
             selfNetworkID: networkId || "320",
-            roleID: "NPG_ADMINISTRATOR"
+            roleID: "NPG_ADMINISTRATOR" // או לפי ה-currentUser
         }
     };
 

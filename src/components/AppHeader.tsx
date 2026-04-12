@@ -29,17 +29,24 @@ export default function AppHeader() {
   const headerRef = useRef<HTMLElement>(null);
   const navigate = useNavigate();
 
-  const handleSubItemClick = (subItem: string) => {
-    if (subItem === "הגדרות יומן") {
+  const handleSubItemClick = (subItem: any) => {
+    if (!subItem) return;
+
+    // חילוץ הטקסט - עובד גם אם זה אובייקט וגם אם סטרינג
+    const itemText = typeof subItem === 'object' ? subItem?.["$"] : subItem;
+    const cleanText = itemText?.trim();
+
+    console.log("Navigating to:", cleanText);
+
+    if (cleanText === "הגדרות יומן") {
       navigate("/calendar");
-    } else if (subItem === "ניהול תהליכים") {
-      navigate("/manage-processes"); // הולך לנתיב הניהול
-    }
-    else if (subItem === "צפייה בתהליכים") {
-      navigate("/view-processes"); // הולך לנתיב הצפייה
-    }
-    else {
-      // כל שאר האופציות שעדיין לא פיתחנו
+    } else if (cleanText === "ניהול תהליכים") {
+      navigate("/manage-processes");
+    } else if (cleanText === "צפייה בתהליכים") {
+      navigate("/view-processes");
+    } else if (cleanText === "נתוני ניוד") {
+      navigate("/dnRouteNumbers");
+    } else {
       navigate("/not-found-yet");
     }
 
