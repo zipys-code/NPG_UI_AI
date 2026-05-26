@@ -1,12 +1,13 @@
 import React from 'react';
-import { Info, ArrowUpDown, Plus } from 'lucide-react';
+import { Info, ArrowUpDown, Plus, MessageSquare } from 'lucide-react';
 import styles from './ProcessDetails.module.css';
 
 interface ProcessDetailsProps {
     proc: any;
+    onShowMessages?: (requestId: string) => void;
 }
 
-export const ProcessDetails: React.FC<ProcessDetailsProps> = ({ proc }) => {
+export const ProcessDetails: React.FC<ProcessDetailsProps> = ({ proc, onShowMessages }) => {
     return (
         <div className={styles.detailsContainer} dir="rtl">
             <div className={styles.grid}>
@@ -61,6 +62,15 @@ export const ProcessDetails: React.FC<ProcessDetailsProps> = ({ proc }) => {
                         <span className={styles.value}>{proc.replacedNum || '---'}</span>
                     </div>
                 </div>
+
+
+                <button
+                    onClick={() => onShowMessages?.(proc.requestId)}
+                    className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold text-[11px] transition-all shadow-sm active:scale-95"
+                >
+                    <MessageSquare size={14} />
+                    <span>צפייה במסרים</span>
+                </button>
             </div>
         </div>
     );

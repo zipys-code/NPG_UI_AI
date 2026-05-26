@@ -24,7 +24,7 @@ export const AddProcessModal = ({ isOpen, onClose, onSave }: {
     onClose: () => void,
     onSave: (data: any) => Promise<any>
 }) => {
-    const { lovs, currentNetworkId } = useApp();
+    const { lovs, currentNetworkId, token } = useApp();
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [allMessages, setAllMessages] = useState<any[]>([]);
@@ -125,7 +125,7 @@ export const AddProcessModal = ({ isOpen, onClose, onSave }: {
                 setForm(prev => ({
                     ...prev,
                     slctDnNetworkType: currentOp.networkType!,
-                    slctDonorNetworkID: String(currentOp.value)
+                    slctDonorNetworkID: String(currentOp.value),
                 }));
             }
         }
@@ -216,7 +216,6 @@ export const AddProcessModal = ({ isOpen, onClose, onSave }: {
                     </div>
                     <button onClick={onClose} className="hover:bg-white/20 p-1 rounded-full"><X size={20} /></button>
                 </div>
-
                 <div className="p-6 overflow-hidden flex-1">
                     {allMessages.length > 0 && (
                         <div className="mb-4 space-y-1">

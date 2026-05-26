@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, RefreshCw, FastForward, Square, Globe, XCircle, Info, AlertTriangle } from 'lucide-react';
+import { X, RefreshCw, FastForward, Square, Globe, XCircle, Info, AlertTriangle, Wrench, CheckCircle } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 
 // --- Interfaces ---
@@ -86,6 +86,11 @@ export const ProcessActionModal: React.FC<ProcessActionModalProps> = ({
         ...extractItems(data.validationNotifications)
     ].filter(m => m.msgCode && String(m.msgCode) !== "1000");
 
+    const successMessages = [
+        ...extractItems(data.notifications),
+        ...extractItems(data.validationNotifications)
+    ].filter(m => m.msgCode && String(m.msgCode) === "1000");
+
     // לוגיקת תצוגה לפי שלבים
     const isPublishPhase = processes.some(p => p.phase === 'Publish');
     const isExecPhase = processes.some(p => p.phase === 'Exec');
@@ -109,13 +114,26 @@ export const ProcessActionModal: React.FC<ProcessActionModalProps> = ({
 
     return (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 backdrop-blur-[2px]" dir="rtl">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl border border-slate-300 overflow-hidden font-sans max-h-[90vh] flex flex-col">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl border border-slate-300 flex flex-col max-h-[90vh] overflow-hidden font-sans">
 
                 {/* Header */}
-                <div className="flex justify-between items-center px-4 py-2 border-b border-slate-200 bg-white">
+                {/* <div className="flex justify-between items-center px-4 py-2 border-b border-slate-200 bg-white">
                     <span className="font-bold text-slate-700 text-sm">טיפול בתהליכים</span>
                     <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded border border-slate-200 text-slate-400">
                         <X size={16} />
+                    </button>
+                </div> */}
+                <div className="flex justify-between items-center px-6 py-4 bg-[#2563eb] text-white rounded-t-xl shadow-sm">
+                    <div className="flex items-center gap-2">
+                        <Wrench size={20} />
+                        <h3 className="font-bold text-lg leading-none">טיפול בתהליכים</h3>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="hover:bg-white/20 p-1.5 rounded-full transition-colors focus:outline-none"
+                        title="סגור"
+                    >
+                        <X size={20} />
                     </button>
                 </div>
 
@@ -132,6 +150,21 @@ export const ProcessActionModal: React.FC<ProcessActionModalProps> = ({
                                 <div key={idx} className="flex gap-2 text-[11px] text-red-800 border-t border-red-100 pt-1 first:border-0 first:pt-0">
                                     <span className="font-bold whitespace-nowrap">קוד {msg.msgCode}:</span>
                                     <span>{msg.msgBody}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* בלוק הודעות הצלחה (ירוק) */}
+                    {successMessages.length > 0 && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 space-y-2 shadow-inner animate-in fade-in">
+                            <div className="flex items-center gap-2 text-green-700 font-bold text-xs">
+                                <CheckCircle size={14} /> {/* וודאי שייבאת CheckCircle מ-lucide-react */}
+                                הפעולה בוצעה בהצלחה:
+                            </div>
+                            {successMessages.map((msg, idx) => (
+                                <div key={idx} className="text-[11px] text-green-800 border-t border-green-100 pt-1 first:border-0 first:pt-0">
+                                    {msg.msgBody}
                                 </div>
                             ))}
                         </div>

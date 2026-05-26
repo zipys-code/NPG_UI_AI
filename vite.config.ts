@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     // הגדרת הפרוקסי לעקיפת CORS
     proxy: {
       '/api': {
-        target: 'http://localhost:8183',
+        target: 'http://localhost:8085',
         changeOrigin: true,
         secure: false,
         // מסיר את המילה /api לפני שהבקשה נשלחת ל-Tibco

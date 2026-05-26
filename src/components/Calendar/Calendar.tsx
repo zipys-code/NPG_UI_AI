@@ -15,16 +15,28 @@ import { useApp } from "@/context/AppContext";
 import { toast } from "sonner";
 
 import { AddEditCalendarModal } from "./AddEditCalendarModal";
-import { ConfirmDeleteModal } from "./ConfirmDeleteModal";
+import { ConfirmDeleteModal } from "../Share/ConfirmDeleteModal";
+import { SetCalendarExceptionModal } from './SetCalendarExceptionModal';
+import { SetWeeklyScheduleModal } from './SetWeeklyScheduleModal';
+
+const parseDate = (dateStr: string) => {
+    if (!dateStr) return new Date(0);
+    // הפיכת dd/mm/yyyy לאובייקט Date בר השוואה
+    const [day, month, year] = dateStr.split('/').map(Number);
+    return new Date(year, month - 1, day);
+};
 
 export const Calendar: React.FC = () => {
-    const { currentNetworkId, currentUser } = useApp();
+    const { currentNetworkId, currentUser, token } = useApp();
 
     // States לניהול נתונים
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<any>(null);
     const [selectedCalendarId, setSelectedCalendarId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'weekly' | 'exceptions'>('weekly');
+    const [isWeeklyOpen, setIsWeeklyOpen] = useState(false);
+    const [isExceptionOpen, setIsExceptionOpen] = useState(false);
+    const [selectedRowData, setSelectedRowData] = useState<any>(null);
 
     // States למודלים
     const [isAddEditOpen, setIsAddEditOpen] = useState(false);
@@ -33,12 +45,15 @@ export const Calendar: React.FC = () => {
     const [calendarToDelete, setCalendarToDelete] = useState<any>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // מיון תאריכים ביומן חריגים
+    const [exceptionSortOrder, setExceptionSortOrder] = useState<'asc' | 'desc'>('desc');
+
     // טעינת נתונים - שינינו חזרה ל-GetCalendar
     const fetchCalendars = useCallback(async () => {
         setLoading(true);
         try {
             const response = await apiRequest("/GetCalendar", {
-                getIn: { token: "", selfNetworkID: currentNetworkId || "320" }
+                getIn: { token: token, selfNetworkID: currentNetworkId }
             });
 
             // חילוץ הנתונים לפי המבנה שרואים ב-Response בצילום המסך
@@ -76,24 +91,41 @@ export const Calendar: React.FC = () => {
     const weeklyTimes = useMemo(() => {
         const rows = data?.weeklySchedule?.rowWS || [];
         const rowsArray = Array.isArray(rows) ? rows : [rows];
+
+
         return rowsArray.filter((w: any) => w.systemCalendarID === selectedCalendarId);
     }, [data, selectedCalendarId]);
 
     const exceptionDays = useMemo(() => {
-        const rows = data?.calendarException?.rowCE || [];
-        const rowsArray = Array.isArray(rows) ? rows : [rows];
-        return rowsArray.filter((e: any) => e.systemCalendarID === selectedCalendarId);
-    }, [data, selectedCalendarId]);
+        const list = data?.calendarException?.rowCE || data?.calendarException;
+        if (!list) return [];
+
+        const array = Array.isArray(list) ? list : [list];
+
+        // סינון ומיון
+        return array
+            .filter((e: any) => e.systemCalendarID === selectedCalendarId)
+            .sort((a, b) => {
+                const dateA = parseDate(a.date).getTime();
+                const dateB = parseDate(b.date).getTime();
+                // המיון תלוי ב-State שלנו
+                if (exceptionSortOrder === 'desc') {
+                    return dateB - dateA; // מאוחר למוקדם
+                } else {
+                    return dateA - dateB; // מוקדם למאוחר
+                }
+            });
+    }, [data, selectedCalendarId, exceptionSortOrder]);
 
     // פונקציית מחיקה
-    const handleDelete = async () => {
-        if (!calendarToDelete) return;
-        if (!calendarToDelete.profile) {
+    const handleDelete = async (calendar: any) => {
+        if (!calendar) return;
+
+        // בדיקה שלא מוחקים יומן כללי (אם יש לך לוגיקה כזו)
+        if (calendar.profile === "כללי") {
             toast.error("לא ניתן למחוק יומן כללי");
-            setIsDeleteOpen(false);
             return;
         }
-
         setIsDeleting(true);
         try {
             await apiRequest("/AddNewCalendar", {
@@ -111,6 +143,63 @@ export const Calendar: React.FC = () => {
         } finally {
             setIsDeleting(false);
             setIsDeleteOpen(false);
+        }
+    };
+
+    const handleDeleteSubItem = async (row: any, type: 'weekly' | 'exceptions') => {
+        const isWeekly = type === 'weekly';
+        const confirmMsg = isWeekly
+            ? `האם למחוק את שעות הפעילות ליום ${row.day}?`
+            : `האם למחוק את החריג לתאריך ${row.date}?`;
+
+        if (!window.confirm(confirmMsg)) return;
+
+        const dayToCode: Record<string, string> = {
+            "ראשון": "1", "שני": "2", "שלישי": "3", "רביעי": "4",
+            "חמישי": "5", "שישי": "6", "שבת": "7"
+        };
+
+        try {
+            const dayValue = isWeekly
+                ? (dayToCode[row.day?.toString().trim()] || row.day)
+                : row.day;
+
+            const payload = {
+                setIn: {
+                    mode: isWeekly ? "DELETE_WEEK_DAY" : "DELETE_EXCEPTION_DAY",
+                    calendarId: selectedCalendarId,
+                    token: token,
+                    selfNetworkID: currentNetworkId,
+                    user: currentUser?.name || "מערכת",
+                    // שדות ספציפיים לכל סוג
+                    ...(isWeekly ? {
+                        weeklySchedularId: row.weeklyScheduleID,
+                        day: dayValue
+                    } : {
+                        /* date: row.date,
+                        originalDay: row.date,
+                        originalSobh: row.SoBH */
+                        date: row.date,
+                        SoBH: row.SoBH,
+                        EoBH: row.EoBH,
+                        originalDay: row.date,
+                        originalSobh: row.SoBH
+                    })
+                }
+            };
+
+            const endpoint = isWeekly ? "/SetWeeklySchedule" : "/SetCalendarException";
+            const response = await apiRequest(endpoint, payload);
+            const notification = response?.setOut?.notification?.msg?.[0];
+
+            if (notification?.code?.toString() === "1000") {
+                toast.success("נמחק בהצלחה");
+                fetchCalendars(); // רענון הנתונים בטבלה
+            } else {
+                toast.error(notification?.msgBody || "שגיאה במחיקה");
+            }
+        } catch (error) {
+            toast.error("שגיאת תקשורת בביצוע המחיקה");
         }
     };
 
@@ -174,7 +263,17 @@ export const Calendar: React.FC = () => {
                                             <td className="px-4 py-4">
                                                 <div className="flex justify-center gap-1">
                                                     <button onClick={(e) => { e.stopPropagation(); setCalendarToEdit(c); setIsAddEditOpen(true); }} className="p-1.5 text-blue-500 hover:bg-white rounded shadow-sm"><Edit3 size={14} /></button>
-                                                    <button onClick={(e) => { e.stopPropagation(); setCalendarToDelete(c); setIsDeleteOpen(true); }} className="p-1.5 text-red-400 hover:bg-white rounded shadow-sm"><Trash2 size={14} /></button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (window.confirm(`האם למחוק את היומן "${c.calendarName}"?`)) {
+                                                                handleDelete(c);
+                                                            }
+                                                        }}
+                                                        className="p-1.5 text-red-400 hover:bg-white rounded shadow-sm"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -196,26 +295,73 @@ export const Calendar: React.FC = () => {
                             <TabBtn active={activeTab === 'weekly'} onClick={() => setActiveTab('weekly')} icon={Clock} label="שעות" />
                             <TabBtn active={activeTab === 'exceptions'} onClick={() => setActiveTab('exceptions')} icon={CalendarDays} label="חריגים" />
                         </div>
-                        <button className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"><Plus size={18} /></button>
+                        <button
+                            onClick={() => {
+                                setSelectedRowData(null);
+                                if (activeTab === 'weekly') setIsWeeklyOpen(true);
+                                else setIsExceptionOpen(true);
+                            }}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold shadow-sm transition-all active:scale-95"
+                        >
+                            <Plus size={14} />
+                            <span>{activeTab === 'weekly' ? 'הוספת שעות' : 'הוספת יום חריג'}</span>
+                        </button>
                     </div>
 
                     <div className="flex-1 overflow-auto p-2">
                         {activeTab === 'weekly' ? (
                             <InnerTable
-                                headers={['יום', 'פתיחה', 'סגירה', '']}
+                                headers={['יום', 'פתיחה', 'סגירה', 'פעולות']}
                                 data={weeklyTimes.map((t: any) => [
                                     <span className="font-bold text-slate-700">{t.day}</span>,
-                                    t.SoBH, t.EoBH,
-                                    <div className="flex gap-2"><Edit3 size={12} className="text-slate-300" /><Trash2 size={12} className="text-slate-300" /></div>
+                                    t.SoBH,
+                                    t.EoBH,
+                                    <div className="flex gap-3 justify-start">
+                                        <Edit3
+                                            size={14}
+                                            className="text-blue-500 cursor-pointer hover:text-blue-700 transition-colors"
+                                            onClick={() => { setSelectedRowData(t); setIsWeeklyOpen(true); }}
+                                        />
+                                        <Trash2
+                                            size={14}
+                                            className="text-red-400 cursor-pointer hover:text-red-600 transition-colors"
+                                            onClick={() => handleDeleteSubItem(t, 'weekly')}
+                                        />
+                                    </div>
                                 ])}
                             />
                         ) : (
                             <InnerTable
-                                headers={['תאריך', 'פתיחה', 'סגירה', 'פעיל']}
+                                headers={[
+                                    <div
+                                        className="flex items-center gap-1 cursor-pointer hover:text-blue-600 transition-colors"
+                                        onClick={() => setExceptionSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                                    >
+                                        <span>תאריך</span>
+                                        <span className="text-[10px]">{exceptionSortOrder === 'desc' ? '▼' : '▲'}</span>
+                                    </div>,
+                                    'פתיחה',
+                                    'סגירה',
+                                    'פעיל',
+                                    'פעולות'
+                                ]}
                                 data={exceptionDays.map((t: any) => [
                                     <span className="font-mono text-blue-700">{t.date}</span>,
-                                    t.SoBH, t.EoBH,
-                                    t.workDay === "1" ? <span className="text-emerald-500 font-bold">V</span> : <span className="text-red-400 font-bold">X</span>
+                                    t.SoBH,
+                                    t.EoBH,
+                                    t.workDay === "1" ? <span className="text-emerald-500 font-bold">V</span> : <span className="text-red-400 font-bold">X</span>,
+                                    <div className="flex gap-3 justify-start">
+                                        <Edit3
+                                            size={14}
+                                            className="text-blue-500 cursor-pointer hover:text-blue-700 transition-colors"
+                                            onClick={() => { setSelectedRowData(t); setIsExceptionOpen(true); }}
+                                        />
+                                        <Trash2
+                                            size={14}
+                                            className="text-red-400 cursor-pointer hover:text-red-600 transition-colors"
+                                            onClick={() => handleDeleteSubItem(t, 'exceptions')}
+                                        />
+                                    </div>
                                 ])}
                             />
                         )}
@@ -230,13 +376,23 @@ export const Calendar: React.FC = () => {
                 onSuccess={fetchCalendars}
                 editData={calendarToEdit}
             />
-            <ConfirmDeleteModal
-                isOpen={isDeleteOpen}
-                onClose={() => setIsDeleteOpen(false)}
-                onConfirm={handleDelete}
-                loading={isDeleting}
-                title="מחיקת יומן"
-                message={`האם למחוק את "${calendarToDelete?.calendarName}"?`}
+
+            {/* מודאל שעות שבועיות */}
+            <SetWeeklyScheduleModal
+                isOpen={isWeeklyOpen}
+                onClose={() => { setIsWeeklyOpen(false); setSelectedRowData(null); }}
+                onSuccess={fetchCalendars}
+                calendarId={selectedCalendarId || ""}
+                editData={selectedRowData}
+            />
+
+            {/* מודאל ימים חריגים */}
+            <SetCalendarExceptionModal
+                isOpen={isExceptionOpen}
+                onClose={() => { setIsExceptionOpen(false); setSelectedRowData(null); }}
+                onSuccess={fetchCalendars}
+                calendarId={selectedCalendarId || ""}
+                editData={selectedRowData}
             />
         </div>
     );
@@ -251,7 +407,25 @@ const TabBtn = ({ active, onClick, icon: Icon, label }: any) => (
 );
 const InnerTable = ({ headers, data }: any) => (
     <table className="w-full text-right text-[11px]">
-        <thead><tr className="bg-slate-50/30">{headers.map((h: any) => <th key={h} className="px-3 py-2 text-slate-400 font-bold border-b border-slate-100">{h}</th>)}</tr></thead>
-        <tbody>{data.length === 0 ? <tr><td colSpan={headers.length} className="p-8 text-center text-slate-300 italic">אין נתונים</td></tr> : data.map((row: any, i: number) => <tr key={i} className="border-b border-slate-50">{row.map((cell: any, j: number) => <td key={j} className="px-3 py-2 text-slate-600">{cell}</td>)}</tr>)}</tbody>
+        <thead>
+            <tr className="bg-slate-50/30">
+                {headers.map((h: any) => (
+                    <th key={h} className="px-3 py-2 text-slate-400 font-bold border-b border-slate-100">{h}</th>
+                ))}
+            </tr>
+        </thead>
+        <tbody>
+            {data.length === 0 ? (
+                <tr><td colSpan={headers.length} className="p-8 text-center text-slate-300 italic">אין נתונים</td></tr>
+            ) : (
+                data.map((row: any, i: number) => (
+                    <tr key={i} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                        {row.map((cell: any, j: number) => (
+                            <td key={j} className="px-3 py-2 text-slate-600">{cell}</td>
+                        ))}
+                    </tr>
+                ))
+            )}
+        </tbody>
     </table>
 );

@@ -1,4 +1,4 @@
-import ProcessManagementComponent from '@/components/ProcessManagement';
+import ProcessManagementComponent from '@/components/Process/ProcessManagement';
 
 export default function ProcessManagementPage() {
     // כאן אנחנו רק קוראים לקומפוננטה האמיתית ומעבירים לה את ה-mode

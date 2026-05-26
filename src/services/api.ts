@@ -16,82 +16,52 @@ export const apiRequest = async (endpoint: string, data: any) => {
 
         let rawText = await response.text();
 
-        // 1. ניקוי תווים נסתרים
-        let fixedText = rawText.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+        // ניקוי תווים (הלוגיקה הקיימת שלך)
+        let fixedText = rawText.replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
+            .replace(/\\'/g, "'")
+            .replace(/\x5C'/g, "'");
 
-        // 2. פתרון סופי לתו 92 (סלאש הפוך):
-        // אנחנו משתמשים ב-Regex שמחפש את התו \ באופן מפורש ומחליף אותו בכלום אם הוא לפני גרש
-        fixedText = fixedText.replace(/\\'/g, "'");
-        fixedText = fixedText.replace(/\x5C'/g, "'"); // \x5C הוא קוד הקסדצימלי ל-92
-
-        // 3. תיקון מרכאות כפולות בתוך סוגריים
-        fixedText = fixedText.replace(/\(([^)]+)\)/g, (match) => {
-            return match.split('"').join("'");
-        });
-
-        // 4. ניסיון ניקוי אחרון לכל סלאש שנשאר "תקוע" בתוך מחרוזת
-        // זה יחליף כל סלאש שמופיע לפני תו עברי או גרש
-        fixedText = fixedText.replace(/\\(?=['\u0590-\u05FF])/g, "");
-
-        /* try {
-            const result = JSON.parse(fixedText);
-
-            const responseKey = Object.keys(result)[0];
-            const dataResponse = result[responseKey];
-            const nestedResponse = dataResponse?.LoginResponse || dataResponse;
-
-            if (nestedResponse?.Code && nestedResponse.Code.toString() !== "1000") {
-                toast.error(nestedResponse.msg || "שגיאה בפרטי ההתחברות");
-                return null;
-            }
-
-            return nestedResponse || result;
-
-        }  */
         try {
             const result = JSON.parse(fixedText);
 
-            // 1. בדיקה עבור מבנה תהליכים (החדש)
-            if (result.root?.getOut) {
-                const getOut = result.root.getOut;
-                const notification = getOut.notification?.msg;
+            // חילוץ המעטפת המרכזית (group או root)
+            const wrapped = result.group || result.root || result;
 
-                // חילוץ הקוד - תומך גם אם זה מערך וגם אם זה אובייקט (לפי הצילום שלך זה מערך)
-                const msgCode = Array.isArray(notification) ? notification[0]?.code : notification?.code;
+            // חילוץ התוכן הפנימי (LoginResponse או getOut)
+            const nested = wrapped.LoginResponse || wrapped.getOut || wrapped;
 
-                if (msgCode && msgCode.toString() !== "1000") {
-                    const msgBody = Array.isArray(notification) ? notification[0]?.msgBody : notification?.msgBody;
-                    toast.error(msgBody || "שגיאה בטעינת נתונים");
-                    return null;
-                }
+            // חילוץ הודעת שגיאה/הצלחה בצורה גמישה (תומך במערך או אובייקט)
+            const notification = nested.notification?.msg || nested;
 
-                // מחזירים את האובייקט המלא כדי שהקומפוננטה תוכל לחלץ את הנתונים
-                return result;
-            }
+            // חילוץ קוד והודעה - תומך ב-Code (גדול) וגם ב-code (קטן)
+            const msgCode = Array.isArray(notification)
+                ? notification[0]?.code
+                : (notification?.Code || notification?.code);
 
-            // 2. לוגיקה מקורית (עבור Login ומסכים אחרים)
-            const responseKey = Object.keys(result)[0];
-            const dataResponse = result[responseKey];
-            const nestedResponse = dataResponse?.LoginResponse || dataResponse;
-
-            if (nestedResponse?.Code && nestedResponse.Code.toString() !== "1000") {
-                toast.error(nestedResponse.msg || "שגיאה בפרטי ההתחברות");
+            const msgBody = Array.isArray(notification)
+                ? notification[0]?.msgBody
+                : (notification?.msg || notification?.msgBody);
+            if (msgCode && msgCode.toString() === "9999") {
+                // שליחת אירוע לדפדפן שהאפליקציה צריכה רענון
+                window.dispatchEvent(new CustomEvent('app:config-changed'));
+                // החזרת Promise דחוי כדי שהקומפוננטה לא תמשיך לרוץ
                 return null;
             }
 
-            return nestedResponse || result;
-
-        }
-        catch (jsonError: any) {
-            const posMatch = jsonError.message.match(/position (\d+)/);
-            if (posMatch) {
-                const pos = parseInt(posMatch[1]);
-                console.log("CHAR CODE AT ERROR:", fixedText.charCodeAt(pos - 1));
-                console.log("TEXT AROUND ERROR:", fixedText.substring(pos - 15, pos + 15));
+            // בדיקת קוד הצלחה
+            if (msgCode && msgCode.toString() !== "1000") {
+                toast.error(msgBody || "שגיאה בפעולה");
+                return null;
             }
+            // החזרת ה-wrapped (ה-group/root) כדי שהקומפוננטה תוכל לחלץ את מה שהיא צריכה
+            return wrapped;
+
+        } catch (jsonError: any) {
+            console.error("JSON Parse Error:", jsonError.message);
             return null;
         }
     } catch (error) {
+        console.error("Fetch Error:", error);
         return null;
     }
 };
@@ -128,14 +98,14 @@ const parseDateTime = (dateTimeStr: string) => {
 
 // src/services/api.ts
 
-export const searchProcesses = async (filters: any, networkId: string | null) => {
+export const searchProcesses = async (filters: any, networkId: string, token: string) => {
     const from = formatForTibco(filters.fromDateTime);
     const to = formatForTibco(filters.toDateTime);
 
     const requestBody = {
         getIn: {
-            token: "",
-            selfNetworkID: networkId || "320",
+            token: token,
+            selfNetworkID: networkId,
             filters: {
                 requestId: filters.requestId,
                 processId: filters.processId, // שדה חדש
@@ -166,7 +136,7 @@ export const searchProcesses = async (filters: any, networkId: string | null) =>
 
 // src/services/api.ts
 
-export const getProcessManipulation = async (processes: any[], networkId: string) => {
+export const getProcessManipulation = async (processes: any[], networkId: string, token: string, roleId: string) => {
     const payload = {
         getIn: {
             processIdList: {
@@ -176,9 +146,9 @@ export const getProcessManipulation = async (processes: any[], networkId: string
                     requestID: p.requestID
                 }))
             },
-            token: "",
-            selfNetworkID: networkId || "320",
-            roleID: "NPG_ADMINISTRATOR" // או לפי ה-currentUser
+            token: token,
+            selfNetworkID: networkId,
+            roleID: roleId
         }
     };
 
@@ -188,11 +158,12 @@ export const getProcessManipulation = async (processes: any[], networkId: string
 // עדכון ה-Interface של הפרמטרים שמתקבלים בפונקציה
 export const setProcesses = async (params: {
     mode: string;
-    processes: { processId: any, requestId: any }[];
+    processes: { processId: any, requestId: any, processState: any }[];
     targetState?: string;
     groupId?: string;
     selfNetworkId: string;
     roleId: string;
+    token?: string;
     userName: string;
     portingData?: any;
     republishList?: string;
@@ -208,7 +179,7 @@ export const setProcesses = async (params: {
                 processList: params.processes.map(p => ({
                     processID: p.processId,
                     requestID: p.requestId,
-                    processState: "" // אופציונלי לפי הצילום
+                    processState: p.processState
                 }))
             },
             targetState: params.targetState || "",
@@ -222,11 +193,11 @@ export const setProcesses = async (params: {
 };
 
 
-export const setAddProcess = async (formData: any, appContext: any) => {
+export const setAddProcess = async (formData: any, userName: string, selfNetworkID: string, token: string, roleID: string) => {
     const payload = {
 
         setIn: {
-            user: appContext.currentUser?.name || "testuser",
+            user: userName,
             data: {
                 singleForm: {
                     // --- חלק 1: מזהים וסטטוסים ---
@@ -249,7 +220,7 @@ export const setAddProcess = async (formData: any, appContext: any) => {
                     txtRecipentLeadingNumber: "",
 
                     // --- חלק 4: מפעילים ---
-                    slctRecipientNetworkID: appContext.currentNetworkId, // מפעיל קולט
+                    slctRecipientNetworkID: selfNetworkID, // מפעיל קולט
                     slctDonorNetworkID: formData.slctDonorNetworkID,    // מפעיל ננטש
 
                     // --- חלק 5: פרטי לקוח והזמנה (לפי המיפוי הישן) ---
@@ -286,8 +257,8 @@ export const setAddProcess = async (formData: any, appContext: any) => {
                     txtNewCrmCustomerId: ""
                 }
             },
-            token: "",
-            selfNetworkID: appContext.currentNetworkId
+            token: token,
+            selfNetworkID: selfNetworkID
         }
     };
 

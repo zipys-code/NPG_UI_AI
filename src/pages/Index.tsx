@@ -1,6 +1,6 @@
-import AppHeader from "@/components/AppHeader";
-import AppFooter from "@/components/AppFooter";
-import ProcessManagement from "@/components/ProcessManagement";
+import AppHeader from "@/components/App/AppHeader";
+import AppFooter from "@/components/App/AppFooter";
+import ProcessManagement from "@/components/Process/ProcessManagement";
 
 const Index = () => {
   return (

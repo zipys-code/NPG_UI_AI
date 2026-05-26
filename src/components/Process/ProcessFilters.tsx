@@ -80,11 +80,14 @@ const AutocompleteField = ({
 interface ProcessFiltersProps {
     onFilter: (filters: any) => void;
     onReset: () => void;
+    isOpen: boolean;
+    setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
+    externalFilters?: any;
+    autoSubmit?: boolean;
 }
 
-export const ProcessFilters: React.FC<ProcessFiltersProps> = ({ onFilter, onReset }) => {
+export const ProcessFilters: React.FC<ProcessFiltersProps> = ({ onFilter, onReset, isOpen, setIsOpen, externalFilters, autoSubmit }) => {
     const { lovs } = useApp();
-    const [isOpen, setIsOpen] = useState(true);
     const [errors, setErrors] = useState<string[]>([]);
 
     const initialFilters = {
@@ -108,6 +111,21 @@ export const ProcessFilters: React.FC<ProcessFiltersProps> = ({ onFilter, onRese
     };
 
     const [filters, setFilters] = useState(initialFilters);
+
+    const [hasAutoSubmitted, setHasAutoSubmitted] = useState(false);
+
+    useEffect(() => {
+        // אם קיבלנו פילטרים מבחוץ (מהדשבורד) ועוד לא עשינו חיפוש אוטומטי
+        if (externalFilters && !hasAutoSubmitted) {
+            const mergedFilters = { ...initialFilters, ...externalFilters };
+            setFilters(mergedFilters);
+
+            if (autoSubmit) {
+                onFilter(mergedFilters);
+                setHasAutoSubmitted(true); // מסמנים שבוצע כדי לא להיכנס ללולאה
+            }
+        }
+    }, [externalFilters, autoSubmit, hasAutoSubmitted]);
 
     const getOptionsFromLOV = (categoryKey: string) => {
         const group = lovs?.[categoryKey];

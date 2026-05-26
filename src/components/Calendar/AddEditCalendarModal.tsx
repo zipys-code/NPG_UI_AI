@@ -31,20 +31,19 @@ export const AddEditCalendarModal: React.FC<AddEditCalendarModalProps> = ({ isOp
         if (cleanText === 'נייד') return 'M';
         if (cleanText === 'נייח יחיד') return 'F_S';
         if (cleanText === 'נייח טווח') return 'F_R';
-        if (cleanText === 'כללי') return ''; // יומן כללי לא מקבל קוד פרופיל
+        if (cleanText === 'כללי') return '';
         return cleanText;
     };
 
     useEffect(() => {
         if (isOpen) {
             if (editData) {
-                // תרגום הערך מהשרת לקוד שה-select מכיר
                 const rawProfile = editData.profile || editData.PROFILE || "";
                 const profileCode = getProfileCode(rawProfile.toString());
 
                 setFormData({
                     calendarName: editData.calendarName || '',
-                    description: editData.desc || '',
+                    description: editData.desc || '', // השארתי desc כפי שהיה במקור שעבד לך
                     profile: profileCode
                 });
             } else {
@@ -63,7 +62,6 @@ export const AddEditCalendarModal: React.FC<AddEditCalendarModalProps> = ({ isOp
         if (!formData.description.trim()) newErrors.description = "שדה תיאור הוא חובה";
         if (!formData.profile) newErrors.profile = "חובה לבחור פרופיל";
 
-        // בדיקה מהקוד הישן: אם בעריכה לא שונה כלום (npg1070)
         if (isEdit &&
             formData.calendarName === editData.calendarName &&
             formData.description === editData.desc &&
@@ -78,6 +76,12 @@ export const AddEditCalendarModal: React.FC<AddEditCalendarModalProps> = ({ isOp
 
     const handleSubmit = async () => {
         if (!validate()) return;
+
+        const confirmMessage = isEdit
+            ? "האם את/ה בטוח שברצונך לעדכן את פרטי היומן?"
+            : "האם את/ה בטוח שברצונך להוסיף יומן חדש?";
+        if (!window.confirm(confirmMessage)) return;
+
         setIsSubmitting(true);
         setServerError(null);
 
@@ -117,8 +121,9 @@ export const AddEditCalendarModal: React.FC<AddEditCalendarModalProps> = ({ isOp
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" dir="rtl">
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col mx-4 border border-slate-200">
-                {/* Header משתנה לפי מצב */}
-                <div className={`p-5 flex items-center justify-between text-white shadow-md ${isEdit ? 'bg-amber-600' : 'bg-blue-600'}`}>
+
+                {/* צבע כחול קבוע לכותרת - הוסרה הבדיקה של isEdit לצבע */}
+                <div className={`p-5 flex items-center justify-between text-white shadow-md bg-blue-600`}>
                     <div className="flex items-center gap-3">
                         {isEdit ? <Edit3 size={22} /> : <CalendarIcon size={22} />}
                         <h2 className="text-xl font-bold">{isEdit ? "עדכון יומן מערכת" : "הוספת יומן מערכת"}</h2>
@@ -152,14 +157,12 @@ export const AddEditCalendarModal: React.FC<AddEditCalendarModalProps> = ({ isOp
                             <label className="text-sm font-bold text-slate-600">סוג פרופיל *</label>
                             <select
                                 value={formData.profile}
-                                // מעדכנים את החסימה: אם זה עריכה והפרופיל המקורי היה ריק או "כללי" - חוסמים
                                 disabled={isEdit && (!editData.profile || editData.profile.trim() === "" || editData.profile === "כללי")}
                                 onChange={(e) => setFormData({ ...formData, profile: e.target.value })}
                                 className={`w-full border rounded-xl px-4 py-2.5 text-sm outline-none transition-all
-            ${isEdit && (!editData.profile || editData.profile === "כללי") ? 'bg-slate-50 cursor-not-allowed text-slate-500' : 'bg-white'} 
-            ${errors.profile ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-500'}`}
+                                ${isEdit && (!editData.profile || editData.profile === "כללי") ? 'bg-slate-50 cursor-not-allowed text-slate-500' : 'bg-white'} 
+                                ${errors.profile ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-500'}`}
                             >
-                                {/* אם זה יומן כללי, נציג אופציה של "כללי", אחרת נציג את ה"בחר" הרגיל */}
                                 {isEdit && (!editData.profile || editData.profile === "כללי") ? (
                                     <option value="">כללי (יומן מערכת)</option>
                                 ) : (
@@ -183,26 +186,28 @@ export const AddEditCalendarModal: React.FC<AddEditCalendarModalProps> = ({ isOp
                         </div>
                     </div>
 
-                    <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 flex flex-col items-center justify-center text-center">
-                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-blue-600 mb-6 shadow-sm border border-slate-100">
+                    {/* תיבת המידע - שינוי לטון כחול במקום אפור/כתום */}
+                    {/* <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100 flex flex-col items-center justify-center text-center">
+                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-blue-600 mb-6 shadow-sm border border-blue-100">
                             <LayoutGrid size={32} />
                         </div>
-                        <h3 className="font-bold text-slate-800 text-lg mb-4 italic">{isEdit ? "עריכת רשומה" : "שים לב"}</h3>
-                        <p className="text-sm text-slate-500 leading-relaxed">
+                        <h3 className="font-bold text-blue-800 text-lg mb-4 italic">{isEdit ? "עריכת רשומה" : "שים לב"}</h3>
+                        <p className="text-sm text-blue-600/80 leading-relaxed">
                             {isEdit ? "שינוי פרטי היומן ישפיע על כל הגדרות לוחות הזמנים המשוייכות אליו." : "לאחר השמירה, תוכלי להגדיר שעות פתיחה וסגירה בטבלה הראשית."}
-                        </p>
-                    </div>
+                        </p> 
+                    </div> */}
                 </div>
 
                 <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between px-10">
+                    {/* צבע כחול קבוע לכפתור */}
                     <button
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        className={`flex items-center gap-2 text-white px-10 py-3 rounded-xl font-bold text-sm shadow-xl transition-all active:scale-95 disabled:opacity-50 ${isEdit ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                        className={`flex items-center gap-2 text-white px-10 py-3 rounded-xl font-bold text-sm shadow-xl transition-all active:scale-95 disabled:opacity-50 bg-blue-600 hover:bg-blue-700`}
                     >
                         {isSubmitting ? <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Save size={18} /><span>{isEdit ? "עדכן שינויים" : "שמור יומן חדש"}</span></>}
                     </button>
-                    <button onClick={onClose} className="text-slate-400 font-bold text-sm px-4">ביטול</button>
+                    <button onClick={onClose} className="text-slate-400 font-bold text-sm px-4 hover:text-slate-600 transition-colors">ביטול</button>
                 </div>
             </div>
         </div>
