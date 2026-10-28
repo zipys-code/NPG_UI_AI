@@ -101,8 +101,8 @@ export const DnRouteNumbersGrid: React.FC<DnRouteNumbersGridProps> = ({ data, lo
 
         // 2. בניית כותרת הדו"ח
         const headerInfo = [
-            ["דו\"ח נתוני ניוד"],
-            [`הופק ע\"י: ${currentUser?.name || 'משתמש מערכת'}`],
+            ['דו"ח נתוני ניוד'],
+            [`הופק ע"י: ${currentUser?.name || 'משתמש מערכת'}`],
             [`תאריך הפקה: ${new Date().toLocaleString('he-IL')}`],
             [""],
             ...(activeFiltersRows.length > 0 ? [["פילטרים שנבחרו:"], ...activeFiltersRows] : [["בוצע חיפוש ללא פילטרים"]]),

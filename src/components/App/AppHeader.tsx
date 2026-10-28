@@ -11,11 +11,14 @@ import {
   Globe,
   Info,
   X,
-  ShieldCheck
+  ShieldCheck,
+  Waypoints // <-- נוודא שזה מיובא
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useNavigate } from "react-router-dom";
-import { APP_CONFIG } from "@/config"; // <-- ייבוא קובץ הקונפיגורציה שלך
+
+// ייבוא הקומפוננטה החדשה מהנתיב שיצרת
+import { ProcessFlowDrawer } from "@/components/ProcessFlowDrawer/ProcessFlowDrawer";
 
 const ICON_MAP: Record<string, any> = {
   "הגדרות": Settings,
@@ -29,7 +32,8 @@ export default function AppHeader() {
   const { menu, currentNetworkName, currentUser, setCurrentNetworkId } = useApp();
 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const [isAboutOpen, setIsAboutOpen] = useState(false); // <-- הסטייט למודאל האודות
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isFlowDrawerOpen, setIsFlowDrawerOpen] = useState(false); // <-- סטייט חדש לפאנל תרשימים
 
   const headerRef = useRef<HTMLElement>(null);
   const navigate = useNavigate();
@@ -64,6 +68,8 @@ export default function AppHeader() {
       navigate("/NPGControlTower")
     } else if (cleanText === "לוח בקרה עיסקי") {
       navigate("/SummaryActivities")
+    } else if (cleanText === "טבלאות קוד") {
+      navigate("/CodeTables")
     }
     else {
       navigate("/not-found-yet");
@@ -96,7 +102,7 @@ export default function AppHeader() {
     if (window.confirm("האם אתה בטוח שברצונך להתנתק?")) {
       sessionStorage.clear();
       localStorage.clear();
-      window.location.href = "/";
+      window.location.reload();
     }
   };
 
@@ -162,7 +168,16 @@ export default function AppHeader() {
         <div className="mr-auto flex shrink-0 items-center gap-3">
           <div className="flex items-center gap-2">
 
-            {/* --- כפתור אודות החדש --- */}
+            {/* --- כפתור מילון תהליכים החדש --- */}
+            {/* <button
+              onClick={() => setIsFlowDrawerOpen(true)}
+              className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-white/50 rounded-full transition-all"
+              title="מילון תהליכים ותרשימי זרימה"
+            >
+              <Waypoints size={20} />
+            </button> */}
+
+            {/* --- כפתור אודות --- */}
             <button
               onClick={() => setIsAboutOpen(true)}
               className="p-1.5 text-slate-500 hover:text-blue-700 hover:bg-white/50 rounded-full transition-all"
@@ -171,7 +186,10 @@ export default function AppHeader() {
               <Info size={20} />
             </button>
 
-            <div className="flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-1.5 font-bold shadow-sm">
+            <div
+              className="flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-1.5 font-bold shadow-sm cursor-help"
+              title={currentUser?.roleId || "לא בוצעה כניסה תקינה"}
+            >
               <span className="text-sm uppercase text-slate-700">
                 {currentUser?.name || "אורח"}
               </span>
@@ -198,51 +216,89 @@ export default function AppHeader() {
         </div>
       </div>
 
-      {/* --- מודאל אודות (About Modal) מעוצב ונקי --- */}
       {isAboutOpen && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100 animate-in zoom-in-95" dir="rtl">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[420px] overflow-hidden border border-slate-100 animate-in zoom-in-95" dir="rtl">
 
-            <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-              <span className="font-bold text-sm text-slate-700">אודות המערכת</span>
+            {/* כותרת */}
+            <div className="bg-blue-600 px-6 py-4 flex justify-between items-center text-white shrink-0 shadow-md">
+              <div className="flex items-center gap-3">
+                <Info size={20} />
+                <h2 className="text-base font-bold">אודות המערכת</h2>
+              </div>
               <button
                 onClick={() => setIsAboutOpen(false)}
-                className="p-1 text-slate-400 hover:bg-slate-200 rounded-full transition-all"
+                className="text-white/80 hover:text-white transition-colors p-1"
               >
-                <X size={16} />
+                <X size={22} />
               </button>
             </div>
 
             <div className="p-6 flex flex-col items-center text-center">
-              <div className="bg-blue-50 text-blue-600 p-3 rounded-2xl mb-4 border border-blue-100">
-                <ShieldCheck size={36} />
+
+              {/* לוגו NPG */}
+              <div className="mb-4">
+                <div className="flex shrink-0 items-center scale-125 origin-center" dir="ltr">
+                  <span className="z-30 flex h-10 w-10 items-center justify-center rounded-full bg-[#1A365D] text-sm font-bold text-white shadow-inner">N</span>
+                  <span className="z-20 -ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#556B2F] text-sm font-bold text-white shadow-inner">P</span>
+                  <span className="z-10 -ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#A0522D] text-sm font-bold text-white shadow-inner">G</span>
+                </div>
               </div>
 
-              {/* שליפת השם והגרסה מקובץ הקונפיגורציה */}
-              <h3 className="text-lg font-black text-slate-800">{APP_CONFIG.APP_NAME}</h3>
-              <p className="text-xs text-slate-400 mt-1">NPG Enterprise Solution</p>
+              <h3 className="text-lg font-black text-slate-800">{(window as any).APP_CONFIG.APP_NAME}</h3>
 
               <div className="w-full bg-slate-50 rounded-xl p-3 mt-5 space-y-2 border border-slate-100 text-right">
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-bold text-slate-500">גרסת מערכת (UI):</span>
                   <span className="font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                    v{APP_CONFIG.VERSION}
+                    v{(window as any).APP_CONFIG.VERSION}
                   </span>
-                </div>
-                <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-200/60">
-                  <span className="font-bold text-slate-500">שרת קישוריות:</span>
-                  <span className="font-bold text-slate-700">TIBCO ActiveMatrix</span>
                 </div>
               </div>
 
-              <p className="text-[10px] text-slate-400 mt-6">
-                © {new Date().getFullYear()} כל הזכויות שמורות לצוות הפיתוח
-              </p>
-            </div>
+              {/* --- אזור שירות ותמיכה חדש --- */}
+              <div className="w-full bg-slate-50/80 rounded-xl p-4 mt-4 border border-slate-200 text-right text-[11.5px] leading-relaxed">
+                <h4 className="font-bold text-slate-800 mb-1.5">3. אופן הפניה לקבלת שרות</h4>
+                <p className="text-slate-600 mb-2">אופן הפניה לקבלת שרות יבוצע באחת מהאפשרויות הבאות:</p>
+                <ul className="space-y-2 text-slate-700 list-disc list-inside">
+                  <li>
+                    <span className="font-medium">פורטל לקוחות (24/7): </span>
+                    <a href="http://support.yaelsoft.com" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-mono select-all ml-1" dir="ltr">http://support.yaelsoft.com</a>
+                  </li>
+                  <li>
+                    <span className="font-medium">דואר אלקטרוני: </span>
+                    <a href="mailto:support@yaelsoft.com" className="text-blue-600 hover:underline font-mono select-all ml-1" dir="ltr">support@yaelsoft.com</a>
+                  </li>
+                  <li>
+                    <span className="font-medium">מוקד תמיכה טלפוני: </span>
+                    <span className="font-mono text-slate-800 font-bold select-all ml-1" dir="ltr">09-7639444</span>
+                  </li>
+                </ul>
+              </div>
 
+              {/* --- אזור זכויות יוצרים ולוגו יעל --- */}
+              <div className="flex justify-between items-center w-full mt-6 pt-4 border-t border-slate-100">
+                <p className="text-[10px] text-slate-400">
+                  © {new Date().getFullYear()} כל הזכויות שמורות לצוות הפיתוח
+                </p>
+
+                <img
+                  src="/yael-logo.png"
+                  alt="Yael Software"
+                  className="h-11 object-contain"
+                />
+              </div>
+
+            </div>
           </div>
         </div>
       )}
+
+      {/* הקריאה לקומפוננטת הפאנל החדשה! */}
+      <ProcessFlowDrawer
+        isOpen={isFlowDrawerOpen}
+        onClose={() => setIsFlowDrawerOpen(false)}
+      />
 
     </header>
   );

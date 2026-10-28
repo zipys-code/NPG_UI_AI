@@ -54,7 +54,7 @@ export const SetOperatorModal = ({
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
         // רגקס לטלפון (תומך בפורמט ישראלי: 05X-XXXXXXX או 0X-XXXXXXX, עם או בלי מקף)
-        const phoneRegex = /^(?:0(?:[23489]|[57]\d)\-?\d{7})$/;
+        const phoneRegex = /^(?:0(?:[23489]|[57]\d)-?\d{7})$/;
 
         // --- ולידציות שדות חובה (כפי שהיה) ---
         if (!formData.BusinessName.trim()) newErrors.BusinessName = "חובה להזין שם מפעיל";
@@ -163,7 +163,7 @@ export const SetOperatorModal = ({
                                 <Mail size={14} className="absolute left-3 top-3 text-slate-400" />
                                 <input
                                     type="email"
-                                    className={inputClass('BusinessEmailAddress')}
+                                    className={`${inputClass('BusinessEmailAddress')} pl-9`}
                                     value={formData.BusinessEmailAddress}
                                     onChange={(e) => setFormData({ ...formData, BusinessEmailAddress: e.target.value })}
                                 />
@@ -177,7 +177,7 @@ export const SetOperatorModal = ({
                                 <Phone size={14} className="absolute left-3 top-3 text-slate-400" />
                                 <input
                                     type="tel"
-                                    className={inputClass('BusinessPhoneNumber')}
+                                    className={`${inputClass('BusinessPhoneNumber')} pl-9`}
                                     value={formData.BusinessPhoneNumber}
                                     onChange={(e) => setFormData({ ...formData, BusinessPhoneNumber: e.target.value })}
                                 />

@@ -143,8 +143,46 @@ export default function ProcessManagement({ mode = 'MANAGE' }: ProcessManagement
   };
 
   // --- ייצוא לאקסל ---
+  // --- ייצוא לאקסל ---
   const handleExportExcel = () => {
     if (results.length === 0) return;
+
+    // 1. מילון תרגום שדות מאנגלית לעברית עבור האקסל
+    const filterLabels: Record<string, string> = {
+      requestId: "מזהה בקשה",
+      processId: "מספר תהליך",
+      groupId: "מספר קבוצה",
+      customerId: "מזהה לקוח",
+      fromDateTime: "מתאריך",
+      toDateTime: "עד תאריך",
+      mobileAband: "מספר מוביל - ננטש",
+      mobileRec: "מספר מוביל - קולט",
+      filterByNum: "סינון לפי מספר",
+      mobileStart: "תחילת טווח/מספר",
+      mobileRecEnd: "סוף טווח",
+      filterByOp: "מפעיל",
+      filterByNet: "רשת",
+      processType: "סוג תהליך",
+      processStatus: "סטטוס",
+      processStep: "שלב",
+      customerProfile: "פרופיל לקוח"
+    };
+
+    // 2. פונקציית עזר לסידור ערכים (בעיקר תאריכים ותצוגות ספציפיות)
+    const formatFilterValue = (key: string, value: any) => {
+      // טיפול בתאריכים עם T
+      if ((key === 'fromDateTime' || key === 'toDateTime') && typeof value === 'string' && value.includes('T')) {
+        const [datePart, timePart] = value.split('T');
+        const [year, month, day] = datePart.split('-');
+        return `${day}/${month}/${year} ${timePart}`;
+      }
+      // טיפול בסוג הסינון הידני
+      if (key === 'filterByNum') {
+        if (value === 'RANGE') return 'לפי טווח מספרים';
+        if (value === 'SINGLE') return 'לפי מספר';
+      }
+      return value;
+    };
 
     const headers = [
       "מזהה בקשה", "מספר תהליך", "מספר/בדיד", "עד מספר", "סוג תהליך",
@@ -166,9 +204,11 @@ export default function ProcessManagement({ mode = 'MANAGE' }: ProcessManagement
     const userInfo = [[`הופק על ידי: ${currentUser?.name || 'מערכת'}`, `בתאריך: ${new Date().toLocaleString('he-IL')}`]];
 
     const filterHeader = [["פילטרים שהוחלו:"]];
+
+    // 3. יצירת רשימת הפילטרים לאקסל עם השמות והערכים המסודרים
     const activeFilters = lastFilters ? Object.entries(lastFilters)
       .filter(([_, v]) => v && v !== 'None' && v !== '')
-      .map(([k, v]) => [`${k}: ${v}`])
+      .map(([k, v]) => [`${filterLabels[k] || k}: ${formatFilterValue(k, v)}`])
       : [["ללא פילטרים"]];
 
     const ws = XLSX.utils.aoa_to_sheet([

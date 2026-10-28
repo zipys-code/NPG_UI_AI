@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useApp } from "@/context/AppContext";
-import { toast } from "sonner";
+import { toast } from "sonner"; // נשאר למקרים של שגיאות כלליות
 import { AutocompleteField } from '../Share/AutocompleteField';
+import { NpgDatePicker } from '../Share/NpgDatePicker';
 
 const getFormattedDate = (daysOffset = 0) => {
     const date = new Date();
@@ -12,60 +13,36 @@ const getFormattedDate = (daysOffset = 0) => {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T00:00`;
 };
 
-const FilterRow = ({ label, children }: { label: string, children: React.ReactNode }) => (
-    <div className="flex items-center gap-3 h-7">
-        <label className="text-[11px] font-medium text-slate-600 w-32 text-right shrink-0">{label}</label>
-        <div className="w-[200px]">{children}</div>
+const FilterRow = ({ label, error, children }: { label: string, error?: string, children: React.ReactNode }) => (
+    <div className="flex items-start gap-3 mb-2">
+        <label className="text-[11px] font-medium text-slate-600 w-32 text-right shrink-0 mt-1.5">{label}</label>
+        <div className="w-[200px] flex flex-col gap-1">
+            {children}
+            {error && error !== " " && (
+                <span className="text-[10px] text-red-600 font-semibold pr-1 mt-[-2px]">{error}</span>
+            )}
+        </div>
     </div>
 );
 
-/* const AutocompleteField = ({ label, options, value, onChange, placeholder = "-בחר-", hasError = false }: any) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-    const wrapperRef = useRef<HTMLDivElement>(null);
-    const currentLabel = options.find((opt: any) => opt.value === value)?.label || '';
+const getCleanOptions = (items: any) => {
+    if (!items || !Array.isArray(items)) return [{ value: '', label: '-ללא-' }];
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) setIsOpen(false);
+    const cleanItems = items.map((opt: any) => {
+        const rawVal = opt.value?.["$"] || opt.value || opt.code || "";
+        const rawLabel = opt.label?.["$"] || opt.label || opt.displayValue?.["$"] || opt.displayValue || opt.name?.["$"] || opt.name || rawVal;
+        return {
+            value: typeof rawVal === 'string' ? rawVal.trim() : String(rawVal),
+            label: typeof rawLabel === 'string' ? rawLabel.trim() : String(rawLabel)
         };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    }).filter((opt: any) => opt.label !== '-ללא-' && opt.value !== '' && opt.value !== 'None');
 
-    return (
-        <div className="flex items-center gap-3 h-7 relative" ref={wrapperRef}>
-            <label className="text-[11px] font-medium text-slate-600 w-32 text-right shrink-0">{label}</label>
-            <div className="w-[200px] relative">
-                <input
-                    type="text"
-                    className={`w-full rounded border px-2 py-1 text-[11px] outline-none h-7 shadow-sm text-right transition-all ${hasError ? 'border-red-500 bg-red-50 ring-1 ring-red-200' : 'border-slate-300 bg-white focus:border-blue-500'
-                        }`}
-                    placeholder={currentLabel || placeholder}
-                    value={isOpen ? searchTerm : currentLabel}
-                    onFocus={() => { setIsOpen(true); setSearchTerm(''); }}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                {isOpen && (
-                    <div className="absolute top-full right-0 left-0 z-[110] mt-1 max-h-40 overflow-y-auto rounded border border-slate-200 bg-white shadow-lg text-right">
-                        <div className="px-2 py-1 text-[11px] hover:bg-blue-50 cursor-pointer text-slate-400" onClick={() => { onChange(''); setIsOpen(false); }}>-ללא-</div>
-                        {options.filter((o: any) => o.label.includes(searchTerm)).map((opt: any) => (
-                            <div key={opt.value} className="px-2 py-1 text-[11px] hover:bg-blue-50 cursor-pointer text-slate-700 border-b border-slate-50 last:border-0"
-                                onClick={() => { onChange(opt.value); setIsOpen(false); }}>
-                                {opt.label}
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-}; */
+    return [{ value: '', label: '-ללא-' }, ...cleanItems];
+};
 
 export const DnRouteNumbersFilters = ({ onFilter, onReset, isOpen, setIsOpen }: any) => {
     const { lovs } = useApp();
-    //const [isOpen, setIsOpen] = useState(true);
-    const [errors, setErrors] = useState<string[]>([]);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const initialFilters = {
         filterByNum: '',
@@ -85,7 +62,12 @@ export const DnRouteNumbersFilters = ({ onFilter, onReset, isOpen, setIsOpen }: 
     const [filters, setFilters] = useState(initialFilters);
 
     const handleChange = (field: string, value: any) => {
-        setErrors(prev => prev.filter(err => err !== field));
+        setErrors(prev => {
+            const newErr = { ...prev };
+            delete newErr[field];
+            return newErr;
+        });
+
         let finalValue = value;
         if (field === 'requestId') finalValue = value.toUpperCase();
         if ((field === 'mobileStart' || field === 'mobileEnd') && value !== '' && !/^\d+$/.test(value)) return;
@@ -93,25 +75,36 @@ export const DnRouteNumbersFilters = ({ onFilter, onReset, isOpen, setIsOpen }: 
     };
 
     const validate = () => {
-        const newErrors: string[] = [];
+        const newErrors: Record<string, string> = {};
+
         if (filters.requestId && !filters.requestId.startsWith('NP')) {
-            toast.error("מזהה בקשה חייב להתחיל ב-NP");
-            newErrors.push('requestId');
+            newErrors.requestId = "מזהה בקשה חייב להתחיל ב-NP";
         }
+
         if (filters.selectByDate === '1') {
-            if (new Date(filters.fromDate) > new Date(filters.toDate)) {
-                toast.error("תאריך התחלה חייב להיות מוקדם מתאריך סיום");
-                newErrors.push('fromDate', 'toDate');
+            if (!filters.fromDate || !filters.toDate) {
+                newErrors.fromDate = "חובה להזין תאריך התחלה וסיום";
+                newErrors.toDate = " ";
+            }
+            else if (new Date(filters.fromDate) > new Date(filters.toDate)) {
+                newErrors.fromDate = "תאריך התחלה חייב להיות קטן או שווה לסיום";
+                newErrors.toDate = " ";
             }
         }
-        if (filters.filterByNum === "SINGLE" && !filters.mobileStart) newErrors.push('mobileStart');
-        if (filters.filterByNum === "RANGE" && (!filters.mobileStart || !filters.mobileEnd)) newErrors.push('mobileStart', 'mobileEnd');
+
+        if (filters.filterByNum === "SINGLE" && !filters.mobileStart) {
+            newErrors.mobileStart = "חובה להזין מספר";
+        }
+        if (filters.filterByNum === "RANGE") {
+            if (!filters.mobileStart) newErrors.mobileStart = "חובה להזין תחילת טווח";
+            if (!filters.mobileEnd) newErrors.mobileEnd = "חובה להזין סוף טווח";
+        }
 
         setErrors(newErrors);
-        return newErrors.length === 0;
+        return Object.keys(newErrors).length === 0;
     };
 
-    const inputClass = (field: string) => `w-[200px] border rounded px-2 py-1 h-7 text-[11px] outline-none transition-all shadow-sm text-right ${errors.includes(field) ? 'border-red-500 bg-red-50 ring-1 ring-red-200' : 'border-slate-300 bg-white text-slate-700 focus:border-blue-500'
+    const inputClass = (field: string) => `w-[200px] border rounded px-2 py-1 h-7 text-[11px] outline-none transition-all shadow-sm text-right ${errors[field] ? 'border-red-500 bg-red-50 ring-1 ring-red-200' : 'border-slate-300 bg-white text-slate-700 focus:border-blue-500'
         }`;
 
     return (
@@ -136,21 +129,43 @@ export const DnRouteNumbersFilters = ({ onFilter, onReset, isOpen, setIsOpen }: 
                                 </FilterRow>
                                 {filters.filterByNum && (
                                     <>
-                                        <FilterRow label={filters.filterByNum === "SINGLE" ? "מספר" : "תחילת טווח"}>
+                                        <FilterRow label={filters.filterByNum === "SINGLE" ? "מספר" : "תחילת טווח"} error={errors.mobileStart}>
                                             <input type="text" className={inputClass('mobileStart')} value={filters.mobileStart} onChange={(e) => handleChange('mobileStart', e.target.value)} />
                                         </FilterRow>
                                         {filters.filterByNum === "RANGE" && (
-                                            <FilterRow label="סוף טווח">
+                                            <FilterRow label="סוף טווח" error={errors.mobileEnd}>
                                                 <input type="text" className={inputClass('mobileEnd')} value={filters.mobileEnd} onChange={(e) => handleChange('mobileEnd', e.target.value)} />
                                             </FilterRow>
                                         )}
                                     </>
                                 )}
-                                <FilterRow label="מזהה בקשה">
+                                <FilterRow label="מזהה בקשה" error={errors.requestId}>
                                     <input type="text" className={inputClass('requestId')} value={filters.requestId} onChange={(e) => handleChange('requestId', e.target.value)} placeholder="...NP" />
                                 </FilterRow>
-                                <AutocompleteField label="מפעיל ננטש" options={lovs?.['byBusiness']?.item || []} value={filters.operatorDonor} onChange={(v: any) => handleChange('operatorDonor', v)} hasError={errors.includes('operatorDonor')} />
-                                <AutocompleteField label="מפעיל קולט" options={lovs?.['byBusiness']?.item || []} value={filters.operatorRecipient} onChange={(v: any) => handleChange('operatorRecipient', v)} hasError={errors.includes('operatorRecipient')} />
+
+                                <FilterRow label="מפעיל ננטש" error={errors.operatorDonor}>
+                                    <select
+                                        className={inputClass('operatorDonor')}
+                                        value={filters.operatorDonor}
+                                        onChange={(e) => handleChange('operatorDonor', e.target.value)}
+                                    >
+                                        {getCleanOptions(lovs?.['byBusiness']?.item).map((opt: any) => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                </FilterRow>
+
+                                <FilterRow label="מפעיל קולט" error={errors.operatorRecipient}>
+                                    <select
+                                        className={inputClass('operatorRecipient')}
+                                        value={filters.operatorRecipient}
+                                        onChange={(e) => handleChange('operatorRecipient', e.target.value)}
+                                    >
+                                        {getCleanOptions(lovs?.['byBusiness']?.item).map((opt: any) => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                </FilterRow>
                             </div>
                             <div className="space-y-2">
                                 <FilterRow label="סנן לפי תאריכים">
@@ -161,19 +176,63 @@ export const DnRouteNumbersFilters = ({ onFilter, onReset, isOpen, setIsOpen }: 
                                 </FilterRow>
                                 {filters.selectByDate === '1' && (
                                     <>
-                                        <FilterRow label="מתאריך">
-                                            <input type="datetime-local" className={inputClass('fromDate')} value={filters.fromDate} onChange={(e) => handleChange('fromDate', e.target.value)} />
-                                        </FilterRow>
-                                        <FilterRow label="עד תאריך">
-                                            <input type="datetime-local" className={inputClass('toDate')} value={filters.toDate} onChange={(e) => handleChange('toDate', e.target.value)} />
-                                        </FilterRow>
-                                        <div className="flex items-center gap-3 h-7">
-                                            <label className="text-[11px] font-medium text-slate-600 w-32 text-right shrink-0">כולל היסטוריה</label>
-                                            <input type="checkbox" className="w-4 h-4 accent-blue-600 cursor-pointer" checked={filters.includeHistory} onChange={(e) => handleChange('includeHistory', e.target.checked)} />
+                                        {/* מתאריך */}
+                                        <div className="flex items-start gap-3 mb-2">
+                                            <label className="text-[11px] font-medium text-slate-600 w-32 text-right shrink-0 mt-1.5">
+                                                מתאריך
+                                            </label>
+                                            <div className="w-[200px]">
+                                                <NpgDatePicker
+                                                    value={filters.fromDate}
+                                                    onChange={(dateString) => setFilters({ ...filters, fromDate: dateString })}
+                                                    showTime={true}
+                                                    error={errors.fromDate}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* עד תאריך */}
+                                        <div className="flex items-start gap-3 mb-2">
+                                            <label className="text-[11px] font-medium text-slate-600 w-32 text-right shrink-0 mt-1.5">
+                                                עד תאריך
+                                            </label>
+                                            <div className="w-[200px]">
+                                                <NpgDatePicker
+                                                    value={filters.toDate}
+                                                    onChange={(dateString) => setFilters({ ...filters, toDate: dateString })}
+                                                    showTime={true}
+                                                    error={errors.toDate}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* כולל היסטוריה בתוך תנאי התאריכים */}
+                                        <div className="flex items-center gap-3 h-7 mb-2">
+                                            <label className="text-[11px] font-medium text-slate-600 w-32 text-right shrink-0">
+                                                כולל היסטוריה
+                                            </label>
+                                            <input
+                                                type="checkbox"
+                                                className="w-4 h-4 accent-blue-600 cursor-pointer"
+                                                checked={filters.includeHistory}
+                                                onChange={(e) => handleChange('includeHistory', e.target.checked)}
+                                            />
                                         </div>
                                     </>
                                 )}
-                                <AutocompleteField label="רשת" options={lovs?.['byNetwork']?.item || []} value={filters.networkType} onChange={(v: any) => handleChange('networkType', v)} />
+
+                                <FilterRow label="רשת">
+                                    <select
+                                        className={inputClass('networkType')}
+                                        value={filters.networkType}
+                                        onChange={(e) => handleChange('networkType', e.target.value)}
+                                    >
+                                        {getCleanOptions(lovs?.['byNetwork']?.item).map((opt: any) => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                </FilterRow>
+
                                 <FilterRow label="סוג ניוד">
                                     <select className={inputClass('portType')} value={filters.portType} onChange={(e) => handleChange('portType', e.target.value)}>
                                         <option value="">-ללא-</option>
@@ -185,7 +244,7 @@ export const DnRouteNumbersFilters = ({ onFilter, onReset, isOpen, setIsOpen }: 
                         </div>
                         <div className="flex justify-start gap-2 mt-6 pt-3 border-t border-slate-100">
                             <button type="submit" className="bg-[#4B9CD3] text-white px-6 py-1.5 rounded text-xs font-bold hover:bg-[#357ABD] transition-colors shadow-sm">בצע חיפוש</button>
-                            <button type="button" onClick={() => { setFilters(initialFilters); setErrors([]); onReset(); }} className="border border-slate-300 bg-slate-50 text-slate-600 px-6 py-1.5 rounded text-xs font-bold hover:bg-slate-100 transition-all">איפוס</button>
+                            <button type="button" onClick={() => { setFilters(initialFilters); setErrors({}); onReset(); }} className="border border-slate-300 bg-slate-50 text-slate-600 px-6 py-1.5 rounded text-xs font-bold hover:bg-slate-100 transition-all">איפוס</button>
                         </div>
                     </form>
                 </div>

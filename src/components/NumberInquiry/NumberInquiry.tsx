@@ -16,25 +16,30 @@ export default function NumberInquiry() {
     const [serverSuccessMessages, setServerSuccessMessages] = useState<string[]>([]);
     const [serverErrors, setServerErrors] = useState<string[]>([]);
 
+    const today = new Date().toISOString().split('T')[0];
     const [filterValues, setFilterValues] = useState({
         dnNumber: '',
         operators: [],
-        fromDate: new Date().toISOString().split('T')[0],
-        toDate: new Date().toISOString().split('T')[0]
+        fromDate: `${today}T00:00`,
+        toDate: `${today}T23:59`
     });
 
     const handleSearch = async (filters: any) => {
         setFilterValues(filters);
         setLoading(true);
         try {
+            // פיצול המחרוזת המאוחדת בחזרה לתאריך ושעה נפרדים עבור טיבקו
+            const [fromDatePart, fromTimePart] = (filters.fromDate || '').split('T');
+            const [toDatePart, toTimePart] = (filters.toDate || '').split('T');
+
             const payload = {
                 getIn: {
                     dnNumber: filters.dnNumber,
                     operators: Array.isArray(filters.operators) ? filters.operators.join(',') : filters.operators,
-                    fromDate: filters.fromDate.split('-').reverse().join('/'),
-                    toDate: filters.toDate.split('-').reverse().join('/'),
-                    fromTime: filters.fromTime || "00:00",
-                    toTime: filters.toTime || "23:59",
+                    fromDate: fromDatePart ? fromDatePart.split('-').reverse().join('/') : '',
+                    toDate: toDatePart ? toDatePart.split('-').reverse().join('/') : '',
+                    fromTime: fromTimePart || "00:00",
+                    toTime: toTimePart || "23:59",
                     selfNetworkID: currentNetworkId,
                     token: token
                 }
@@ -74,28 +79,26 @@ export default function NumberInquiry() {
             const setOut = response?.setOut || response;
             const msgArray = Array.isArray(setOut?.notification?.msg) ? setOut.notification.msg : [setOut?.notification?.msg];
 
-            const successMsg = msgArray.find(m => m.code === "1000" && m.severity !== "ERROR");
+            const successMsg = msgArray.find((m: any) => m.code === "1000" && m.severity !== "ERROR");
 
             if (successMsg) {
-                const details = msgArray.map(m => m.msgBody || "הבקשה נשלחה בהצלחה");
+                const details = msgArray.map((m: any) => m.msgBody || "הבקשה נשלחה בהצלחה");
                 setServerSuccessMessages(details);
                 setIsAddModalOpen(false);
 
-                // עדכון הפילטרים במסך וביצוע החיפוש
+                const todayStr = new Date().toISOString().split('T')[0];
                 const updatedFilters = {
                     dnNumber: data.dnNumber,
                     operators: data.operatorIds,
-                    fromDate: new Date().toISOString().split('T')[0],
-                    toDate: new Date().toISOString().split('T')[0],
-                    fromTime: "00:00",
-                    toTime: "23:59",
+                    fromDate: `${todayStr}T00:00`,
+                    toDate: `${todayStr}T23:59`,
                     showHistory: false
                 };
 
                 handleSearch(updatedFilters);
                 return { success: true };
             } else {
-                const errors = msgArray.map(m => m.msgBody || "תקלה טכנית");
+                const errors = msgArray.map((m: any) => m.msgBody || "תקלה טכנית");
                 setServerErrors(errors);
                 return { success: false };
             }
@@ -115,19 +118,7 @@ export default function NumberInquiry() {
         <div className="p-6 bg-slate-50 min-h-screen rtl" dir="rtl">
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    {/* האייקון עכשיו נקי, בלי רקע כחול, עם הצבע התואם לשאר המסכים */}
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="lucide lucide-shield-question text-[#4B9CD3]"
-                    >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-question text-[#4B9CD3]">
                         <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path>
                         <path d="M9.1 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3"></path>
                         <path d="M12 17h.01"></path>
@@ -135,7 +126,6 @@ export default function NumberInquiry() {
                     <h1 className="text-2xl font-bold text-slate-800">שאילתת מספר</h1>
                 </div>
 
-                {/* כפתור ה-Action נשאר בצד שמאל */}
                 <button
                     onClick={openAddModal}
                     className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-md transition-all active:scale-95">
@@ -147,7 +137,6 @@ export default function NumberInquiry() {
                 </button>
             </div>
 
-            {/* הודעת הצלחה ירוקה בראש הדף עם פיצול לשורות */}
             {serverSuccessMessages.length > 0 && (
                 <div className="mb-6 bg-emerald-50 border border-emerald-200 rounded-lg p-4 shadow-sm animate-in fade-in slide-in-from-top-2">
                     <div className="flex justify-between items-start">
@@ -157,9 +146,7 @@ export default function NumberInquiry() {
                             </h4>
                             <div className="mr-6 space-y-1.5">
                                 {serverSuccessMessages.map((msg, i) => {
-                                    // ניקוי תגיות ה-br ופיצול לשורות
                                     const cleanLines = msg.replace(/<\/br>/g, '\n').split('\n');
-
                                     return (
                                         <div key={i} className="flex flex-col gap-1">
                                             {cleanLines.map((line, lIdx) => (
@@ -175,10 +162,7 @@ export default function NumberInquiry() {
                                 })}
                             </div>
                         </div>
-                        <button
-                            onClick={() => setServerSuccessMessages([])}
-                            className="text-emerald-400 hover:text-emerald-600 transition-colors"
-                        >
+                        <button onClick={() => setServerSuccessMessages([])} className="text-emerald-400 hover:text-emerald-600 transition-colors">
                             <X size={18} />
                         </button>
                     </div>
@@ -191,11 +175,12 @@ export default function NumberInquiry() {
                 onReset={() => {
                     setResults([]);
                     setIsFilterOpen(true);
+                    const todayStr = new Date().toISOString().split('T')[0];
                     setFilterValues({
                         dnNumber: '',
                         operators: [],
-                        fromDate: new Date().toISOString().split('T')[0],
-                        toDate: new Date().toISOString().split('T')[0]
+                        fromDate: `${todayStr}T00:00`,
+                        toDate: `${todayStr}T23:59`
                     });
                 }}
                 isOpen={isFilterOpen}
@@ -210,7 +195,6 @@ export default function NumberInquiry() {
             />
 
             <div className="mt-8">
-                {/* שינוי results ל-data כדי להתאים ל-Grid */}
                 <NumberInquiryGrid data={results} loading={loading} />
             </div>
         </div>

@@ -26,7 +26,7 @@ export const HistoryGrid = ({ data, loading }: any) => {
     };
 
     const sortedData = useMemo(() => {
-        let sortableItems = [...data];
+        const sortableItems = [...data];
         sortableItems.sort((a, b) => {
             let aValue, bValue;
             if (sortConfig.key === 'actionStartDate' || sortConfig.key === 'actionEndDate') {

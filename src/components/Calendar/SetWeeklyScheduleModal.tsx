@@ -53,7 +53,9 @@ export const SetWeeklyScheduleModal: React.FC<SetWeeklyScheduleModalProps> = ({ 
             }
             setServerError(null);
         }
-    }, [isOpen, editData]);
+    },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [isOpen, editData]);
 
     const validate = () => {
         // ולידציה: שעת התחלה חייבת להיות לפני שעת סיום

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Info, ArrowUpDown, Plus, MessageSquare } from 'lucide-react';
 import styles from './ProcessDetails.module.css';
+import { ProcessTimeline } from './ProcessTimeline';
 
 interface ProcessDetailsProps {
     proc: any;
@@ -62,13 +63,16 @@ export const ProcessDetails: React.FC<ProcessDetailsProps> = ({ proc, onShowMess
                         <span className={styles.value}>{proc.replacedNum || '---'}</span>
                     </div>
                 </div>
+            </div>
 
+            <ProcessTimeline processId={proc.processId} />
 
+            <div className="mt-4 flex justify-start pl-4">
                 <button
                     onClick={() => onShowMessages?.(proc.requestId)}
-                    className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold text-[11px] transition-all shadow-sm active:scale-95"
+                    className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-bold text-[14px] transition-all shadow-md active:scale-95"
                 >
-                    <MessageSquare size={14} />
+                    <MessageSquare size={18} />
                     <span>צפייה במסרים</span>
                 </button>
             </div>

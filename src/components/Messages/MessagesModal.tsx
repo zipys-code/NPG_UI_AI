@@ -11,7 +11,9 @@ export const MessagesModal = ({ requestId, isOpen, onClose }: any) => {
 
     useEffect(() => {
         if (isOpen && requestId) fetchMessages();
-    }, [isOpen, requestId]);
+    },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [isOpen, requestId]);
 
     const fetchMessages = async () => {
         setLoading(true);
@@ -45,16 +47,30 @@ export const MessagesModal = ({ requestId, isOpen, onClose }: any) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95">
-                <div className="p-4 bg-slate-50 border-b flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <MessageSquare className="text-blue-600" size={20} />
-                        <span className="font-bold text-slate-800">מסרים עבור בקשה: {requestId}</span>
+        // מעטפת ממורכזת, בטוחה ולא נחתכת
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm" dir="rtl">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+
+                {/* ההדר הכחול והחדש! */}
+                <div className="flex justify-between items-center px-6 py-4 bg-[#2563eb] text-white rounded-t-xl shadow-sm shrink-0">
+                    <div className="flex items-center gap-3">
+                        <MessageSquare size={22} />
+                        <div className="flex flex-col gap-0.5">
+                            <h3 className="font-bold text-lg leading-none">צפייה במסרים</h3>
+                            <span className="text-[12.5px] font-medium text-blue-100 leading-none">בקשה מס': {requestId}</span>
+                        </div>
                     </div>
-                    <button onClick={onClose} className="p-1 hover:bg-slate-200 rounded-full transition-all"><X size={20} /></button>
+                    <button
+                        onClick={onClose}
+                        className="hover:bg-white/20 p-1.5 rounded-full transition-colors focus:outline-none"
+                        title="סגור"
+                    >
+                        <X size={20} />
+                    </button>
                 </div>
-                <div className="flex-1 overflow-auto p-4">
+
+                {/* אזור התוכן (הגריד) */}
+                <div className="flex-1 overflow-auto bg-slate-50/50 p-6">
                     <GetMessagesGrid data={data} loading={loading} appliedFilters={{ requestId }} />
                 </div>
             </div>

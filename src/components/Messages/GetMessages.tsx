@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom'; // <-- הוספנו ייבוא
+import { useLocation } from 'react-router-dom';
 import { GetMessagesFilters } from './GetMessagesFilters';
 import { GetMessagesGrid } from './GetMessagesGrid';
 import { apiRequest } from "@/services/api";
@@ -13,19 +13,13 @@ const GetMessages = () => {
     const [lastAppliedFilters, setLastAppliedFilters] = useState<any>(null);
     const [isFilterOpen, setIsFilterOpen] = useState(true);
 
-    // --- קליטת הנתונים מהדשבורד ---
     const location = useLocation();
     const navigationState = location.state as { externalFilters?: any; autoSearch?: boolean } | null;
     const externalFilters = navigationState?.externalFilters || null;
     const autoSubmit = navigationState?.autoSearch || false;
 
     const handleSearch = async (filters: any) => {
-        const start = new Date(`${filters.dateFrom}T${filters.timeFromHour}:${filters.timeFromMin}`);
-        const end = new Date(`${filters.dateTo}T${filters.timeToHour}:${filters.timeToMin}`);
-
-        if (start > end) {
-            return;
-        }
+        // מחקנו מכאן את בדיקת ה-start > end כי ה-GetMessagesFilters כבר עושה את זה בשבילנו!
 
         setLoading(true);
         setResults([]);
@@ -40,8 +34,8 @@ const GetMessages = () => {
                     txtRequestId: filters.requestId || '',
                     slctMsgType: filters.msgType === 'None' ? '' : filters.msgType,
                     txtMsgStatus: filters.msgStatus === 'None' ? '' : filters.msgStatus,
-                    // --- כאן אנחנו שולחים את המפעיל שהוספת בצד שרת ---
                     operatorName: filters.operator === 'None' ? '' : filters.operator,
+                    // הפילטרס שלנו כבר שולח את התאריכים בפורמט שטיבקו אוהב, אז פשוט מציבים:
                     cldrDateFrom: filters.dateFrom,
                     txtTimeFrom: filters.timeFrom,
                     cldrDateTo: filters.dateTo,
@@ -52,12 +46,16 @@ const GetMessages = () => {
 
             const response = await apiRequest("/GetMessages", payload);
             const dataGrid = response?.getOut?.dataGrid?.row || [];
-            const finalData = Array.isArray(dataGrid) ? dataGrid : [dataGrid];
+            const finalData = Array.isArray(dataGrid) ? dataGrid : (dataGrid ? [dataGrid] : []);
 
             setResults(finalData);
 
             if (finalData.length === 0) {
                 toast.info("לא נמצאו מסרים לחתך המבוקש");
+            } else {
+                // הוספתי הקפצת הודעת הצלחה וסגירת הפילטר כמו בשאר המסכים
+                toast.success(`נמצאו ${finalData.length} מסרים`);
+                setIsFilterOpen(false);
             }
         } catch (err) {
             console.error("Search error:", err);
@@ -92,8 +90,8 @@ const GetMessages = () => {
                 onReset={() => { setResults([]); setIsFilterOpen(true); }}
                 isOpen={isFilterOpen}
                 setIsOpen={setIsFilterOpen}
-                externalFilters={externalFilters} // <-- העברה לפילטר
-                autoSubmit={autoSubmit}           // <-- העברה לפילטר
+                externalFilters={externalFilters}
+                autoSubmit={autoSubmit}
             />
 
             <div className="mt-6">

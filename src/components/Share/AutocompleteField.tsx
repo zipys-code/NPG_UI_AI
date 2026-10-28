@@ -30,8 +30,8 @@ export const AutocompleteField = ({ label, options, value, onChange, placeholder
                 <input
                     type="text"
                     className={`!w-full rounded border px-2 py-1 text-[11px] outline-none h-7 shadow-sm text-right transition-all ${hasError
-                            ? 'border-red-500 bg-red-50 ring-1 ring-red-200'
-                            : 'border-slate-300 bg-white focus:border-blue-500'
+                        ? 'border-red-500 bg-red-50 ring-1 ring-red-200'
+                        : 'border-slate-300 bg-white focus:border-blue-500'
                         }`}
                     placeholder={currentLabel || placeholder}
                     value={isOpen ? searchTerm : currentLabel}
@@ -42,12 +42,7 @@ export const AutocompleteField = ({ label, options, value, onChange, placeholder
 
                 {isOpen && (
                     <div className="absolute top-full right-0 left-0 z-[110] mt-1 max-h-40 overflow-y-auto rounded border border-slate-200 bg-white shadow-lg text-right">
-                        <div
-                            className="px-2 py-1 text-[11px] hover:bg-blue-50 cursor-pointer text-slate-400"
-                            onClick={() => { onChange(''); setIsOpen(false); }}
-                        >
-                            -ללא-
-                        </div>
+                        {/* ✂️ כאן מחקנו את ה- "-ללא-" הקשיח! ✂️ */}
                         {options
                             .filter((o: any) => (o.label || '').toLowerCase().includes(searchTerm.toLowerCase()))
                             .map((opt: any) => (

@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { APP_CONFIG } from "@/config"; // ה- @ תמיד מפנה ל-src לא משנה איפה את נמצאת
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -15,7 +14,7 @@ export function cn(...inputs: ClassValue[]) {
  */
 export const validateLRN = (lrn: string): boolean => {
   if (!lrn) return false;
-  return APP_CONFIG.LRN_PATTERN.test(lrn);
+  return (window as any).APP_CONFIG.LRN_PATTERN.test(lrn);
 };
 
 /**

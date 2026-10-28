@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AlertTriangle, LogOut, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
-import { APP_CONFIG } from "@/config";
 import { LoginModal } from "@/components/Login/LoginModal.tsx";
 import AppHeader from "@/components/App/AppHeader.tsx";
 import ProcessManagement from './components/Process/ProcessManagement.tsx';
@@ -24,6 +23,7 @@ import HousekeepingScheduler from "./components/HousekeepingScheduler/Housekeepi
 import OperatorManagement from "./components/NetworksInterfaces/OperatorManagement.tsx";
 import { NPGControlTower } from "./components/ControlTower/NPGControlTower.tsx";
 import SummaryActivities from "./components/SummaryActivities/SummaryActivities.tsx";
+import CodeTables from "./components/CodeTables/CodeTables.tsx";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -49,7 +49,7 @@ const AppContent = () => {
 
   const [isInitializing, setIsInitializing] = useState(true);
   const [needsReload, setNeedsReload] = useState(false);
-  const isLoginRequired = APP_CONFIG.LOGIN_REQUIRED === "Y";
+  const isLoginRequired = (window as any).APP_CONFIG.LOGIN_REQUIRED === "Y";
   const [serverError, setServerError] = useState<string | null>(null);
 
   // 1. מאזין לאירוע שינוי קונפיגורציה (Restart) מה-API
@@ -78,19 +78,19 @@ const AppContent = () => {
         }
 
         const dynamicToken = `NPDUMMY_${Date.now()}`;
-        const defId = APP_CONFIG.DEFAULT_SELFNETWORKID;
+        const defId = (window as any).APP_CONFIG.DEFAULT_SELFNETWORKID;
 
         // ב. תרחיש ללא לוגין (אורח)
         if (!isLoginRequired) {
           const guestUser = {
-            name: APP_CONFIG.DEFAULT_USERNAME || "אורח",
-            roleId: APP_CONFIG.ROLE_ID,
+            name: (window as any).APP_CONFIG.DEFAULT_USERNAME || "אורח",
+            roleId: (window as any).APP_CONFIG.ROLE_ID,
             token: dynamicToken,
             permissions: { canAddProcess: true }
           };
 
           setToken(dynamicToken);
-          setRoleId(APP_CONFIG.ROLE_ID);
+          setRoleId((window as any).APP_CONFIG.ROLE_ID);
           setCurrentUser(guestUser);
           setCurrentNetworkId(defId);
 
@@ -206,7 +206,8 @@ const AppContent = () => {
     };
 
     initApp();
-  }, []);
+  }, // eslint-disable-next-line react-hooks/exhaustive-deps
+    []);
 
   // --- תנאי רינדור 1: מסך רענון חוסם (Restart) ---
   if (needsReload) {
@@ -267,7 +268,7 @@ const AppContent = () => {
 
   // --- רינדור האפליקציה ---
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Toaster />
       <Sonner
         dir="rtl"
@@ -304,6 +305,7 @@ const AppContent = () => {
               <Route path="/OperatorManagement" element={<OperatorManagement />} />
               <Route path="/NPGControlTower" element={<NPGControlTower />} />
               <Route path="/SummaryActivities" element={<SummaryActivities />} />
+              <Route path="/CodeTables" element={<CodeTables />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>

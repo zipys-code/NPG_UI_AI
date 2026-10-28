@@ -75,7 +75,9 @@ export const Calendar: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [currentNetworkId]);
+    },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [currentNetworkId]);
 
     useEffect(() => {
         fetchCalendars();

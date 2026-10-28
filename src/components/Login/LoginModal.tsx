@@ -13,19 +13,13 @@ interface LoginModalProps {
 
 export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
     const navigate = useNavigate();
-    const appContext = useApp(); // שליפת ה-context כולו לבדיקה
+    const appContext = useApp(); // שליפה אחת בלבד של ה-Context
 
+    // 1. כל ה-Hooks מסודרים בראש הקומפוננטה (חוק הברזל של React)
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [selectedDomain, setSelectedDomain] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-
-    // הגנה קריטית: אם ה-Context משום מה לא הגיע, אל תרנדר כלום
-    if (!appContext) return null;
-
-    const { lovs, setCurrentNetworkId, setCurrentNetworkName, setCurrentUser, setAppData } = appContext;
-    const { token, setToken } = useApp();
-    const inputClasses = "w-full h-[54px] rounded-xl border border-slate-200 bg-slate-50 px-4 text-right font-sans text-base text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all shadow-sm placeholder:text-slate-400";
 
     const getSafeValue = (obj: any) => {
         if (!obj) return "";
@@ -33,7 +27,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
     };
 
     const domains = useMemo(() => {
-        // אם lovs עדיין לא קיים או שאין לו את המבנה המצופה - מחזירים מערך ריק
+        // גישה בטוחה ל-appContext גם אם הוא עדיין ריק
+        const lovs = appContext?.lovs;
         if (!lovs || typeof lovs !== 'object') return [];
 
         try {
@@ -50,7 +45,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
         } catch (e) {
             return [];
         }
-    }, [lovs]);
+    }, [appContext?.lovs]);
 
     const showDomainSelector = domains.length > 1;
 
@@ -60,7 +55,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
         }
     }, [domains]);
 
-    // בתוך LoginModal.tsx - פונקציית handleLogin
+    // 2. רק עכשיו מותר לעשות "יציאה מוקדמת"
+    if (!appContext) return null;
+
+    // 3. חילוץ סופי של המשתנים (עכשיו בטוח ש-appContext קיים)
+    const { lovs, setCurrentNetworkId, setCurrentNetworkName, setCurrentUser, setAppData, setToken } = appContext;
+
+    const inputClasses = "w-full h-[54px] rounded-xl border border-slate-200 bg-slate-50 px-4 text-right font-sans text-base text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all shadow-sm placeholder:text-slate-400";
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -79,7 +81,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
 
             const userData = response?.LoginResponse || response;
 
-            // בדיקה לפי הקוד שחזר מהשרת (בצילום זה "1000")
             if (userData && userData.Code === "1000") {
                 const finalToken = userData.token || initialLoginToken;
                 const finalRoleId = userData.roleID || userData.roleId;
@@ -91,11 +92,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
                     token: finalToken
                 });
 
-                // 2. עדכון שאר ה-States
                 setToken(finalToken);
                 setCurrentNetworkId(selectedDomain);
 
-                // עדכון שם המפעיל ב-Header מיד לאחר הלוגין
                 if (lovs) {
                     const identityGroup = (lovs as any)?.selfIdentity;
                     const items = Array.isArray(identityGroup?.item) ? identityGroup.item : [identityGroup?.item];
@@ -105,7 +104,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
                     }
                 }
 
-                // קריאה לתפריט
                 const menuData = await apiRequest('/GetMenuList', {
                     getIn: {
                         roleID: finalRoleId,
@@ -115,23 +113,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
                 });
 
                 if (menuData) {
-                    console.log("נתוני תפריט לפני הסינון:", menuData);
-                    //const HIDDEN_MENUS = ["דוחות", "טבלאות קוד"];
-
-                    // חילוץ לפי המבנה שרואים בלוג: data -> menuDoc
                     const menuDocs = menuData.data?.menuDoc;
 
                     if (menuDocs) {
                         const menuArray = Array.isArray(menuDocs) ? menuDocs : [menuDocs];
 
-                        // סינון התפריטים ברמה הראשית (דוחות, הגדרות וכו')
                         const filteredDocs = menuArray.filter((doc: any) => {
                             const title = doc.text?.["$"] || doc.text;
                             return !HIDDEN_MENUS.includes(title);
                         });
 
-                        // שימי לב: "טבלאות קוד" נמצא בתוך "הגדרות" כתת-תפריט!
-                        // אם את רוצה להסיר אותו משם, צריך לעבור על ה-items:
                         filteredDocs.forEach((doc: any) => {
                             if (doc.items?.item && Array.isArray(doc.items.item)) {
                                 doc.items.item = doc.items.item.filter((subItem: any) => {
@@ -141,9 +132,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
                             }
                         });
 
-                        console.log("מערך התפריטים אחרי הסינון:", filteredDocs);
-
-                        // עדכון המבנה החדש
                         menuData.data.menuDoc = filteredDocs;
                     }
 
@@ -156,7 +144,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
                     token: finalToken
                 });
 
-                // הודעת הצלחה וסגירת המודאל
                 toast.success(`ברוך הבא, ${finalName}`);
 
             } else {
@@ -178,8 +165,9 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onSuccess }) => {
                 <div className="p-8" dir="rtl">
                     <form onSubmit={handleLogin} className="space-y-5">
                         <div className="flex flex-col gap-4">
-                            <input type="text" placeholder="שם משתמש" value={username} onChange={(e) => setUsername(e.target.value)} className={inputClasses} required />
-                            <input type="password" placeholder="סיסמה" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClasses} required />
+                            <input type="text" placeholder="שם משתמש" value={username} onChange={(e) => setUsername(e.target.value)} className={inputClasses} required autoComplete="username" />
+                            <input type="password" placeholder="סיסמה" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClasses} required autoComplete="current-password" />
+
                             {showDomainSelector && (
                                 <div className="space-y-1.5 text-right">
                                     <label className="text-[11px] font-bold text-slate-500 pr-1">בחר דומיין כניסה:</label>

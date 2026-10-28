@@ -2,11 +2,18 @@ import React, { useState } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useApp } from "@/context/AppContext";
 import { toast } from "sonner";
+import { NpgDatePicker } from '../Share/NpgDatePicker';
 
-const FilterRow = ({ label, children }: { label: string, children: React.ReactNode }) => (
+// עדכנו את FilterRow כך שיתמוך בשגיאות
+const FilterRow = ({ label, error, children }: { label: string, error?: string, children: React.ReactNode }) => (
     <div className="flex items-start gap-3 min-h-[40px]">
         <label className="text-[11px] font-medium text-slate-600 w-32 text-right shrink-0 mt-1.5">{label}</label>
-        <div className="w-[200px] flex flex-col">{children}</div>
+        <div className="w-[200px] flex flex-col gap-1">
+            {children}
+            {error && error !== " " && (
+                <span className="text-[10px] text-red-600 font-semibold pr-1 mt-[-2px]">{error}</span>
+            )}
+        </div>
     </div>
 );
 
@@ -16,7 +23,6 @@ export const NumberingPlanFilters = ({ filters, setFilters, onSearch, onReset, i
 
     const handleChange = (field: string, value: any) => {
         setFilters((prev: any) => ({ ...prev, [field]: value }));
-        // ניקוי שגיאה ברגע שמתחילים להקליד
         if (errors[field]) {
             setErrors((prev: any) => {
                 const newErrs = { ...prev };
@@ -26,42 +32,38 @@ export const NumberingPlanFilters = ({ filters, setFilters, onSearch, onReset, i
         }
     };
 
-    // בתוך NumberingPlanFilters.tsx
-
     const validate = () => {
         const newErrors: any = {};
         const phoneRegex = /^[0-9]*$/;
 
-        // 1. ולידציה למספר בודד
         if (filters.numberFilterType === 'Single') {
             if (!filters.dnNumber) newErrors.dnNumber = "שדה חובה";
             else if (!phoneRegex.test(filters.dnNumber)) newErrors.dnNumber = "ספרות בלבד";
         }
 
-        // 2. ולידציה לטווח מספרים
         if (filters.numberFilterType === 'Range') {
-            // בדיקת שדות חובה ופורמט ספרות
             if (!filters.fromNumber) newErrors.fromNumber = "שדה חובה";
             else if (!phoneRegex.test(filters.fromNumber)) newErrors.fromNumber = "ספרות בלבד";
 
             if (!filters.toNumber) newErrors.toNumber = "שדה חובה";
             else if (!phoneRegex.test(filters.toNumber)) newErrors.toNumber = "ספרות בלבד";
 
-            // הבדיקה שהוספנו: השוואת ערכים (רק אם שניהם תקינים מבחינת פורמט)
             if (!newErrors.fromNumber && !newErrors.toNumber) {
                 const startNum = BigInt(filters.fromNumber);
                 const endNum = BigInt(filters.toNumber);
-
                 if (startNum > endNum) {
                     newErrors.toNumber = "סוף הטווח חייב להיות גדול מההתחלה";
                 }
             }
         }
 
-        // 3. ולידציה לתאריכים (קיים)
         if (filters.validity === 'History') {
-            if (new Date(filters.dateFrom) > new Date(filters.dateTo)) {
-                newErrors.dateTo = "תאריך סיום חייב להיות אחרי התחלה";
+            if (!filters.dateFrom || !filters.dateTo) {
+                if (!filters.dateFrom) newErrors.dateFrom = "שדה חובה";
+                if (!filters.dateTo) newErrors.dateTo = "שדה חובה";
+            } else if (new Date(filters.dateFrom) > new Date(filters.dateTo)) {
+                newErrors.dateFrom = "תאריך סיום חייב להיות אחרי התחלה";
+                newErrors.dateTo = " ";
             }
         }
 
@@ -98,35 +100,42 @@ export const NumberingPlanFilters = ({ filters, setFilters, onSearch, onReset, i
 
                                 {filters.validity === 'History' && (
                                     <>
+                                        {/* NpgDatePicker מטפל בעצמו בשגיאה, לכן לא מעבירים ל-FilterRow */}
                                         <FilterRow label="מתאריך">
-                                            <input type="date" className={getFieldClass('dateFrom')} value={filters.dateFrom} onChange={(e) => handleChange('dateFrom', e.target.value)} />
+                                            <NpgDatePicker
+                                                value={filters.dateFrom}
+                                                onChange={(v) => handleChange('dateFrom', v)}
+                                                error={errors.dateFrom}
+                                            />
                                         </FilterRow>
                                         <FilterRow label="עד תאריך">
-                                            <input type="date" className={getFieldClass('dateTo')} value={filters.dateTo} onChange={(e) => handleChange('dateTo', e.target.value)} />
-                                            {errors.dateTo && <span className="text-[9px] text-red-600 font-bold mt-0.5">{errors.dateTo}</span>}
+                                            <NpgDatePicker
+                                                value={filters.dateTo}
+                                                onChange={(v) => handleChange('dateTo', v)}
+                                                error={errors.dateTo}
+                                            />
                                         </FilterRow>
                                     </>
                                 )}
 
                                 <FilterRow label="סינון לפי מפעיל">
-                                    {/* סינון לפי מפעיל */}
                                     <select className={getFieldClass('operator')} value={filters.operator} onChange={(e) => handleChange('operator', e.target.value)}>
                                         <option value="">-ללא-</option>
-                                        {(lovs?.byBusiness?.item || []).map((opt: any, idx: number) => {
-                                            // 1. שליפת הערך (הקוד לשליחה לשרת)
-                                            const val = opt.value?.["$"] || opt.value || opt.code || "";
-
-                                            // 2. שליפת השם לתצוגה - בדיקה של כל הווריאציות האפשריות ב-TIBCO
-                                            const label = opt.label?.["$"] || opt.label ||
-                                                opt.displayValue?.["$"] || opt.displayValue ||
-                                                opt.name?.["$"] || opt.name || val;
-
-                                            return (
-                                                <option key={`${val}-${idx}`} value={val}>
-                                                    {label}
-                                                </option>
-                                            );
-                                        })}
+                                        {(lovs?.byBusiness?.item || [])
+                                            .filter((opt: any) => {
+                                                const val = opt.value?.["$"] || opt.value || opt.code || "";
+                                                const label = opt.label?.["$"] || opt.label || opt.displayValue?.["$"] || opt.displayValue || opt.name?.["$"] || opt.name || val;
+                                                return label !== '-ללא-' && val !== '';
+                                            })
+                                            .map((opt: any, idx: number) => {
+                                                const val = opt.value?.["$"] || opt.value || opt.code || "";
+                                                const label = opt.label?.["$"] || opt.label || opt.displayValue?.["$"] || opt.displayValue || opt.name?.["$"] || opt.name || val;
+                                                return (
+                                                    <option key={`${val}-${idx}`} value={val}>
+                                                        {label}
+                                                    </option>
+                                                );
+                                            })}
                                     </select>
                                 </FilterRow>
 
@@ -149,42 +158,40 @@ export const NumberingPlanFilters = ({ filters, setFilters, onSearch, onReset, i
                                 </FilterRow>
 
                                 {filters.numberFilterType === 'Single' && (
-                                    <FilterRow label="מספר">
+                                    <FilterRow label="מספר" error={errors.dnNumber}>
                                         <input type="text" className={getFieldClass('dnNumber')} value={filters.dnNumber} onChange={(e) => handleChange('dnNumber', e.target.value)} />
-                                        {errors.dnNumber && <span className="text-[9px] text-red-600 font-bold mt-0.5">{errors.dnNumber}</span>}
                                     </FilterRow>
                                 )}
 
                                 {filters.numberFilterType === 'Range' && (
                                     <>
-                                        <FilterRow label="תחילת טווח">
+                                        <FilterRow label="תחילת טווח" error={errors.fromNumber}>
                                             <input type="text" className={getFieldClass('fromNumber')} value={filters.fromNumber} onChange={(e) => handleChange('fromNumber', e.target.value)} />
-                                            {errors.fromNumber && <span className="text-[9px] text-red-600 font-bold mt-0.5">{errors.fromNumber}</span>}
                                         </FilterRow>
-                                        <FilterRow label="סוף טווח">
+                                        <FilterRow label="סוף טווח" error={errors.toNumber}>
                                             <input type="text" className={getFieldClass('toNumber')} value={filters.toNumber} onChange={(e) => handleChange('toNumber', e.target.value)} />
-                                            {errors.toNumber && <span className="text-[9px] text-red-600 font-bold mt-0.5">{errors.toNumber}</span>}
                                         </FilterRow>
                                     </>
                                 )}
 
                                 <FilterRow label="סינון לפי רשת">
-                                    {/* סינון לפי רשת */}
                                     <select className={getFieldClass('network')} value={filters.network} onChange={(e) => handleChange('network', e.target.value)}>
                                         <option value="">-ללא-</option>
-                                        {(lovs?.byNetwork?.item || []).map((opt: any, idx: number) => {
-                                            const val = opt.value?.["$"] || opt.value || opt.code || "";
-
-                                            const label = opt.label?.["$"] || opt.label ||
-                                                opt.displayValue?.["$"] || opt.displayValue ||
-                                                opt.name?.["$"] || opt.name || val;
-
-                                            return (
-                                                <option key={`${val}-${idx}`} value={val}>
-                                                    {label}
-                                                </option>
-                                            );
-                                        })}
+                                        {(lovs?.byNetwork?.item || [])
+                                            .filter((opt: any) => {
+                                                const val = opt.value?.["$"] || opt.value || opt.code || "";
+                                                const label = opt.label?.["$"] || opt.label || opt.displayValue?.["$"] || opt.displayValue || opt.name?.["$"] || opt.name || val;
+                                                return label !== '-ללא-' && val !== '';
+                                            })
+                                            .map((opt: any, idx: number) => {
+                                                const val = opt.value?.["$"] || opt.value || opt.code || "";
+                                                const label = opt.label?.["$"] || opt.label || opt.displayValue?.["$"] || opt.displayValue || opt.name?.["$"] || opt.name || val;
+                                                return (
+                                                    <option key={`${val}-${idx}`} value={val}>
+                                                        {label}
+                                                    </option>
+                                                );
+                                            })}
                                     </select>
                                 </FilterRow>
 
@@ -204,8 +211,8 @@ export const NumberingPlanFilters = ({ filters, setFilters, onSearch, onReset, i
                             </button>
                             <button type="button"
                                 onClick={() => {
-                                    setErrors({}); // ניקוי שגיאות אדומות
-                                    onReset();    // קריאה לפונקציית האיפוס שמעדכנת את ה-filters
+                                    setErrors({});
+                                    onReset();
                                 }}
                                 className="border border-slate-300 bg-slate-50 text-slate-600 px-6 py-1.5 rounded text-xs font-bold hover:bg-slate-100">
                                 איפוס

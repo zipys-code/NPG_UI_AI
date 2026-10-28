@@ -32,8 +32,8 @@ export const InterfacesGrid = ({ data = [], onRefresh, onSearchHistory }: Interf
     const sortedData = useMemo(() => {
         const sortableItems = [...safeData];
         sortableItems.sort((a, b) => {
-            let aVal = a[sortConfig.key];
-            let bVal = b[sortConfig.key];
+            const aVal = a[sortConfig.key];
+            const bVal = b[sortConfig.key];
             if (sortConfig.key === 'lastUpdateDate') {
                 const timeA = aVal ? new Date(aVal).getTime() : 0;
                 const timeB = bVal ? new Date(bVal).getTime() : 0;

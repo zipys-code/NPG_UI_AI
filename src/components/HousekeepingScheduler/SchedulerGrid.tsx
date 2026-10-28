@@ -31,7 +31,7 @@ export const SchedulerGrid: React.FC<SchedulerGridProps> = ({
 
     // לוגיקת המיון המרכזית
     const sortedData = useMemo(() => {
-        let sortableItems = [...(data || [])];
+        const sortableItems = [...(data || [])];
         if (sortConfig.key) {
             sortableItems.sort((a, b) => {
                 let aValue = a[sortConfig.key];

@@ -4,6 +4,7 @@ import { useApp } from "@/context/AppContext";
 import { apiRequest } from "@/services/api";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
+import { NpgDatePicker } from '../Share/NpgDatePicker';
 
 export const AddEditNumberingPlanModal = ({ isOpen, onClose, onSuccess, editData }: any) => {
     const { lovs, token, currentNetworkId, currentUser } = useApp();
@@ -17,23 +18,20 @@ export const AddEditNumberingPlanModal = ({ isOpen, onClose, onSuccess, editData
         validTo: '',
         kosherFlag: false,
         tollFreeFlag: false,
-        networkType: '' // ריק כברירת מחדל כדי להציג "-בחר רשת-"
+        networkType: ''
     });
 
     const [errors, setErrors] = useState<any>({});
     const [serverError, setServerError] = useState<string | null>(null);
 
-    // טעינת נתונים (עריכה / חדש)
     useEffect(() => {
         setServerError(null);
         if (isEdit && editData) {
-            // מציאת ID מפעיל מה-LOV לפי הטקסט מהגריד
             const operatorEntry = lovs?.byBusiness?.item?.find((item: any) => {
                 const label = item.label?.["$"] || item.label || item.displayValue?.["$"] || item.displayValue;
                 return label === editData.txtRH;
             });
 
-            // מציאת ID רשת מה-LOV לפי הטקסט מהגריד
             const networkEntry = lovs?.byNetwork?.item?.find((item: any) => {
                 const label = item.displayValue?.["$"] || item.displayValue || item.label;
                 return label === editData.txtNetworkType;
@@ -62,10 +60,9 @@ export const AddEditNumberingPlanModal = ({ isOpen, onClose, onSuccess, editData
                 validTo: '', kosherFlag: false, tollFreeFlag: false, networkType: ''
             });
         }
-        setErrors({}); // איפוס שגיאות בפתיחה
+        setErrors({});
     }, [isEdit, editData, isOpen, lovs]);
 
-    // --- לוגיקת הולידציות ששוחזרה ---
     const validate = () => {
         const newErrs: any = {};
         const phoneRegex = /^[0-9]*$/;
@@ -76,7 +73,6 @@ export const AddEditNumberingPlanModal = ({ isOpen, onClose, onSuccess, editData
         if (!formData.DNto) newErrs.DNto = "חובה להזין סוף טווח";
         else if (!phoneRegex.test(formData.DNto)) newErrs.DNto = "ספרות בלבד";
 
-        // תחילת טווח קטן מסוף טווח
         if (!newErrs.DNfrom && !newErrs.DNto && BigInt(formData.DNfrom) > BigInt(formData.DNto)) {
             newErrs.DNto = "סוף הטווח חייב להיות גדול מההתחלה";
         }
@@ -85,10 +81,10 @@ export const AddEditNumberingPlanModal = ({ isOpen, onClose, onSuccess, editData
         if (!formData.networkType) newErrs.networkType = "חובה לבחור רשת";
         if (!formData.validFrom) newErrs.validFrom = "חובה להזין תאריך התחלה";
 
-        // תאריך התחלה קטן מתאריך סיום
         if (formData.validFrom && formData.validTo) {
             if (new Date(formData.validFrom) > new Date(formData.validTo)) {
-                newErrs.validTo = "תאריך סיום חייב להיות אחרי התחלה";
+                newErrs.validFrom = "תאריך סיום חייב להיות אחרי התחלה";
+                newErrs.validTo = " ";
             }
         }
 
@@ -98,7 +94,7 @@ export const AddEditNumberingPlanModal = ({ isOpen, onClose, onSuccess, editData
 
     const handleSave = async () => {
         if (!validate()) return;
-        setServerError(null); // איפוס שגיאה קודמת
+        setServerError(null);
 
         const payload = {
             setIn: {
@@ -120,13 +116,11 @@ export const AddEditNumberingPlanModal = ({ isOpen, onClose, onSuccess, editData
 
         const response = await apiRequest('/SetNumberingPlan', payload);
         if (response) {
-            // חילוץ ההתראה מתוך ה-Response לפי המבנה שרואים בתמונה: setOut -> notification
             const notification = response.setOut?.notification || response.notification;
             const msg = notification?.msg?.[0] || notification?.msg;
             const code = msg?.code?.["$"] || msg?.code;
             const msgBody = msg?.msgBody?.["$"] || msg?.msgBody;
 
-            // רק קוד 1000 נחשב הצלחה אמיתית בטיבקו
             if (code === "1000") {
                 toast.success(isEdit ? "הרשומה עודכנה בהצלחה" : "הרשומה נוספה בהצלחה");
                 onSuccess();
@@ -139,22 +133,24 @@ export const AddEditNumberingPlanModal = ({ isOpen, onClose, onSuccess, editData
 
     if (!isOpen) return null;
 
-    const getFieldClass = (errField: string) => `w-full h-11 bg-slate-50 border rounded-lg px-3 text-sm transition-all ${errors[errField] ? 'border-red-500 ring-1 ring-red-100 bg-red-50' : 'border-slate-200 focus:border-blue-500 focus:bg-white'
+    const getFieldClass = (errField: string) => `w-full h-8 bg-slate-50 border rounded text-sm transition-all text-right px-2 outline-none ${errors[errField] ? 'border-red-400 bg-red-50 focus:border-red-500' : 'border-slate-300 focus:border-blue-500 focus:bg-white'
         }`;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm rtl" dir="rtl">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm rtl p-4" dir="rtl">
+            {/* מבנה מתוקן למניעת חיתוך המודאל במסכים קטנים */}
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl flex flex-col max-h-[95vh] overflow-hidden">
                 {/* Header */}
-                <div className="bg-[#2563eb] p-4 flex justify-between items-center text-white">
+                <div className="bg-[#2563eb] p-4 flex justify-between items-center text-white shrink-0">
                     <div className="flex items-center gap-2">
                         <Plus size={20} />
                         <h3 className="text-lg font-bold">{isEdit ? "עדכון רשומה קיימת" : "יצירת תוכנית מספור חדשה"}</h3>
                     </div>
                     <button onClick={onClose} className="hover:bg-white/20 p-1 rounded-full transition-colors"><X size={20} /></button>
                 </div>
-                <div className="p-8">
-                    {/* הודעת שגיאה מעוצבת לפי הדוגמה שלך */}
+
+                {/* Body (גליל עצמאית) */}
+                <div className="p-8 overflow-y-auto flex-1">
                     {serverError && (
                         <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 animate-in fade-in slide-in-from-top-2">
                             <div className="flex items-start gap-3">
@@ -171,12 +167,6 @@ export const AddEditNumberingPlanModal = ({ isOpen, onClose, onSuccess, editData
                         </div>
                     )}
 
-                    <div className="grid grid-cols-3 gap-10">
-                        {/* שאר עמודות הטופס... */}
-                    </div>
-                </div>
-
-                <div className="p-8">
                     <div className="grid grid-cols-3 gap-10">
                         {/* עמודה 1: טווח */}
                         <div className="space-y-6">
@@ -226,18 +216,26 @@ export const AddEditNumberingPlanModal = ({ isOpen, onClose, onSuccess, editData
                         <div className="space-y-6">
                             <div className="flex items-center gap-2 text-blue-700 border-b border-slate-100 pb-2 mb-4"><Calendar size={18} /><span className="font-bold text-sm">לוחות זמנים</span></div>
                             <div className="space-y-4">
-                                <div><label className="block text-[12px] font-medium text-slate-500 mb-1">תקף מתאריך *</label>
-                                    <input type="date" disabled={isEdit} className={getFieldClass('validFrom')} value={formData.validFrom} onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })} />
-                                    {errors.validFrom && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.validFrom}</p>}</div>
-                                <div><label className="block text-[12px] font-medium text-slate-500 mb-1">בתוקף עד</label>
-                                    <input type="date" className={getFieldClass('validTo')} value={formData.validTo} onChange={(e) => setFormData({ ...formData, validTo: e.target.value })} />
-                                    {errors.validTo && <p className="text-red-500 text-[10px] mt-1 font-bold">{errors.validTo}</p>}</div>
+                                <NpgDatePicker
+                                    label="תקף מתאריך *"
+                                    value={formData.validFrom}
+                                    onChange={(val) => setFormData({ ...formData, validFrom: val })}
+                                    disabled={isEdit}
+                                    error={errors.validFrom}
+                                />
+                                <NpgDatePicker
+                                    label="בתוקף עד"
+                                    value={formData.validTo}
+                                    onChange={(val) => setFormData({ ...formData, validTo: val })}
+                                    error={errors.validTo}
+                                />
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-slate-50/80 p-6 flex items-center gap-4">
+                {/* Footer */}
+                <div className="bg-slate-50/80 p-6 flex items-center gap-4 shrink-0 border-t border-slate-200">
                     <button onClick={handleSave} className="bg-[#2563eb] text-white px-8 py-2.5 rounded-lg font-bold text-sm shadow-lg hover:bg-blue-700 flex items-center gap-2 transition-all active:scale-95"><Save size={18} />{isEdit ? "עדכן רשומה" : "הוסף תוכנית"}</button>
                     <button onClick={onClose} className="text-slate-600 font-bold text-sm hover:text-slate-800 px-4">ביטול</button>
                 </div>

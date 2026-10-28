@@ -10,10 +10,9 @@ interface EventViewerGridProps {
 }
 
 export const EventViewerGrid: React.FC<EventViewerGridProps> = ({ data, loading, appliedFilters }) => {
-    const { currentUser, lovs } = useApp(); // חילוץ שם המשתמש וה-LOVs לתרגום באקסל
+    const { currentUser, lovs } = useApp();
     const [sortConfig, setSortConfig] = useState<any>({ key: 'txtEventId', direction: 'desc' });
 
-    // פונקציית עזר להמרת תאריך (dd/MM/yyyy HH:mm) לערך מספרי למיון
     const parseDateValue = (dateStr: string) => {
         if (!dateStr) return 0;
         try {
@@ -63,7 +62,12 @@ export const EventViewerGrid: React.FC<EventViewerGridProps> = ({ data, loading,
         return sortConfig.direction === 'asc' ? <ArrowUp size={12} className="text-blue-600" /> : <ArrowDown size={12} className="text-blue-600" />;
     };
 
-    // --- פונקציית הייצוא המלאה ---
+    // פונקציית עזר לתצוגת התאריך באקסל במקום ה-T שמפריד ביניהם כעת
+    const formatDisplayDate = (isoString: string) => {
+        if (!isoString) return '';
+        return isoString.replace('T', ' שעה: ');
+    };
+
     const exportToExcel = () => {
         const activeFiltersRows: string[][] = [];
 
@@ -76,12 +80,16 @@ export const EventViewerGrid: React.FC<EventViewerGridProps> = ({ data, loading,
                 activeFiltersRows.push([`סוג אירוע: ${typeName}`]);
             }
 
-            activeFiltersRows.push([`טווח תאריכים: ${appliedFilters.fromDate} ${appliedFilters.fromHour}:${appliedFilters.fromMinute} עד ${appliedFilters.toDate} ${appliedFilters.toHour}:${appliedFilters.toMinute}`]);
+            if (appliedFilters.eventClass) activeFiltersRows.push([`סיווג אירוע: ${appliedFilters.eventClass}`]);
+
+            // התיקון: שימוש במשתנים החדשים מהסטייט (fromDate ו-toDate)
+            activeFiltersRows.push([`טווח תאריכים: ${formatDisplayDate(appliedFilters.fromDate)} עד ${formatDisplayDate(appliedFilters.toDate)}`]);
         }
 
         const headerInfo = [
+            // התיקון: הורדנו את הלוכסן המיותר בשורות הבאות
             ["דו\"ח צפייה באירועים"],
-            [`הופק ע\"י: ${currentUser?.name || 'משתמש מערכת'}`],
+            [`הופק ע"י: ${currentUser?.name || 'משתמש מערכת'}`],
             [`תאריך הפקה: ${new Date().toLocaleString('he-IL')}`],
             [""],
             ...(activeFiltersRows.length > 0 ? [["פילטרים שנבחרו:"], ...activeFiltersRows] : [["בוצע חיפוש ללא פילטרים"]]),
@@ -100,6 +108,9 @@ export const EventViewerGrid: React.FC<EventViewerGridProps> = ({ data, loading,
         const worksheet = XLSX.utils.aoa_to_sheet(headerInfo);
         const tableStartRow = headerInfo.length + 1;
         XLSX.utils.sheet_add_json(worksheet, tableData, { origin: `A${tableStartRow}`, skipHeader: false });
+
+        // הגדרת כיוון RLT
+        worksheet['!dir'] = "rtl";
 
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "אירועים");

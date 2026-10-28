@@ -8,7 +8,7 @@ export const GetMessagesGrid = ({ data, loading, appliedFilters }: any) => {
         key: 'DateTime',
         direction: 'desc'
     });
-    const { currentUser, lovs } = useApp();
+    const { currentUser } = useApp(); // הורדתי את lovs כי לא השתמשנו בו כאן באקסל
 
     const handleSort = (key: string) => {
         let direction: 'asc' | 'desc' = 'asc';
@@ -25,21 +25,28 @@ export const GetMessagesGrid = ({ data, loading, appliedFilters }: any) => {
         });
     }, [data, sortConfig]);
 
-    // בתוך GetMessagesGrid.tsx
+    // פונקציית עזר לתצוגת התאריך באקסל במקום ה-T שמפריד ביניהם כעת
+    const formatDisplayDate = (isoString: string) => {
+        if (!isoString) return '';
+        return isoString.replace('T', ' שעה: ');
+    };
+
     const exportToExcel = () => {
-        // הוספת פילטרים שנבחרו לכותרת האקסל
         const activeFilters = [
             ["דו\"ח צפייה במסרים"],
-            [`הופק ע\"י: ${currentUser?.name || 'מערכת'}`],
+            [`הופק ע"י: ${currentUser?.name || 'מערכת'}`],
             [`תאריך הפקה: ${new Date().toLocaleString('he-IL')}`],
             [""],
             ["פילטרים:"],
-            // שימוש ב-"" כברירת מחדל כדי למנוע הדפסת "undefined" באקסל
             [appliedFilters?.requestId ? `מזהה בקשה: ${appliedFilters.requestId}` : ""],
             [appliedFilters?.msgType && appliedFilters.msgType !== 'None' ? `סוג מסר: ${appliedFilters.msgType}` : ""],
-            [`טווח תאריכים: ${appliedFilters?.dateFrom || ''} עד ${appliedFilters?.dateTo || ''}`],
+            [appliedFilters?.operator ? `מפעיל: ${appliedFilters.operator}` : ""], // הוספנו מפעיל
+            [`טווח תאריכים: ${formatDisplayDate(appliedFilters?.dateFrom)} עד ${formatDisplayDate(appliedFilters?.dateTo)}`],
             [""]
         ];
+
+        // מסננים שורות ריקות (ה-"") כדי שהאקסל לא ידפיס שורות מיותרות
+        const cleanActiveFilters = activeFilters.filter(row => row[0] !== "");
 
         const tableData = sortedData.map(row => ({
             'סוג הודעה': row.messagetype,
@@ -52,8 +59,11 @@ export const GetMessagesGrid = ({ data, loading, appliedFilters }: any) => {
             'תיאור': row.errorDesc
         }));
 
-        const worksheet = XLSX.utils.aoa_to_sheet(activeFilters);
-        XLSX.utils.sheet_add_json(worksheet, tableData, { origin: `A${activeFilters.length + 1}`, skipHeader: false });
+        const worksheet = XLSX.utils.aoa_to_sheet(cleanActiveFilters);
+        XLSX.utils.sheet_add_json(worksheet, tableData, { origin: `A${cleanActiveFilters.length + 1}`, skipHeader: false });
+
+        // הגדרת כיוון RLT
+        worksheet['!dir'] = "rtl";
 
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Messages");
@@ -68,7 +78,7 @@ export const GetMessagesGrid = ({ data, loading, appliedFilters }: any) => {
         }
     };
 
-    const SortIcon = ({ column }: { column: string }) => {
+    const getSortIcon = (column: string) => {
         if (sortConfig.key !== column) return <ArrowUpDown size={12} className="text-slate-300" />;
         return sortConfig.direction === 'asc' ? <ArrowUp size={12} className="text-blue-600" /> : <ArrowDown size={12} className="text-blue-600" />;
     };
@@ -76,11 +86,10 @@ export const GetMessagesGrid = ({ data, loading, appliedFilters }: any) => {
     const thClass = "p-3 border-l border-slate-100 text-slate-500 font-bold cursor-pointer hover:bg-slate-100 transition-colors";
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden" dir="rtl">
             <div className="p-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                 <span className="text-xs font-bold text-slate-600">תוצאות חיפוש ({data.length})</span>
 
-                {/* כפתור מעודכן לאחידות עם צפייה באירועים */}
                 <button
                     onClick={exportToExcel}
                     disabled={data.length === 0}
@@ -96,13 +105,27 @@ export const GetMessagesGrid = ({ data, loading, appliedFilters }: any) => {
                     <thead>
                         <tr className="bg-slate-50/50">
                             <th className="p-3 border-l border-slate-100 w-10 text-center">XML</th>
-                            <th className={thClass} onClick={() => handleSort('messagetype')}>סוג מסר <SortIcon column="messagetype" /></th>
-                            <th className={thClass} onClick={() => handleSort('from')}>שולח <SortIcon column="from" /></th>
-                            <th className={thClass} onClick={() => handleSort('to')}>מקבל <SortIcon column="to" /></th>
-                            <th className={thClass} onClick={() => handleSort('messageId')}>מספר הודעה <SortIcon column="messageId" /></th>
-                            <th className={thClass} onClick={() => handleSort('status')}>סטטוס <SortIcon column="status" /></th>
-                            <th className={thClass} onClick={() => handleSort('DateTime')}>תאריך <SortIcon column="DateTime" /></th>
-                            <th className={thClass} onClick={() => handleSort('errorCode')}>קוד שגיאה <SortIcon column="errorCode" /></th>
+                            <th className={thClass} onClick={() => handleSort('messagetype')}>
+                                <div className="flex items-center justify-between"><span>סוג מסר</span>{getSortIcon('messagetype')}</div>
+                            </th>
+                            <th className={thClass} onClick={() => handleSort('from')}>
+                                <div className="flex items-center justify-between"><span>שולח</span>{getSortIcon('from')}</div>
+                            </th>
+                            <th className={thClass} onClick={() => handleSort('to')}>
+                                <div className="flex items-center justify-between"><span>מקבל</span>{getSortIcon('to')}</div>
+                            </th>
+                            <th className={thClass} onClick={() => handleSort('messageId')}>
+                                <div className="flex items-center justify-between"><span>מספר הודעה</span>{getSortIcon('messageId')}</div>
+                            </th>
+                            <th className={thClass} onClick={() => handleSort('status')}>
+                                <div className="flex items-center justify-between"><span>סטטוס</span>{getSortIcon('status')}</div>
+                            </th>
+                            <th className={thClass} onClick={() => handleSort('DateTime')}>
+                                <div className="flex items-center justify-between"><span>תאריך</span>{getSortIcon('DateTime')}</div>
+                            </th>
+                            <th className={thClass} onClick={() => handleSort('errorCode')}>
+                                <div className="flex items-center justify-between"><span>קוד שגיאה</span>{getSortIcon('errorCode')}</div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -123,7 +146,7 @@ export const GetMessagesGrid = ({ data, loading, appliedFilters }: any) => {
                                             {row.status}
                                         </span>
                                     </td>
-                                    <td className="p-3 border-l border-slate-100 text-slate-500">{row.DateTime}</td>
+                                    <td className="p-3 border-l border-slate-100 text-slate-500 whitespace-nowrap">{row.DateTime}</td>
                                     <td className="p-3 border-l border-slate-100 font-bold text-red-500">{row.errorCode}</td>
                                 </tr>
                             ))

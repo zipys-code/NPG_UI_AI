@@ -48,7 +48,9 @@ const SummaryActivities = () => {
 
     useEffect(() => {
         fetchSummaryData();
-    }, [refreshTime, currentNetworkId]);
+    },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [refreshTime, currentNetworkId]);
 
     const formatDateTimeLocal = (date: Date) => {
         const pad = (n: number) => n.toString().padStart(2, '0');

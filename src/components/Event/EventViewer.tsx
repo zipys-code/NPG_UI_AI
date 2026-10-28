@@ -11,14 +11,17 @@ const EventViewer = () => {
     const [loading, setLoading] = useState(false);
     const { currentNetworkId, token } = useApp();
     const [appliedFilters, setAppliedFilters] = useState<any>(null);
-    const [isOpen, setIsOpen] = useState(true); // ניהול פתיחת הפילטרים
+    const [isOpen, setIsOpen] = useState(true);
 
     const handleSearch = async (filters: any) => {
         setLoading(true);
         setResults([]);
         setAppliedFilters(filters);
 
-        // פונקציית עזר להמרת YYYY-MM-DD ל-DD/MM/YYYY עבור השרת
+        // מפרקים את התאריך והשעה חזרה לפורמט שטיבקו מצפה לו
+        const fromDateParts = filters.fromDate.split('T');
+        const toDateParts = filters.toDate.split('T');
+
         const formatToTibco = (dateStr: string) => {
             const [y, m, d] = dateStr.split('-');
             return `${d}/${m}/${y}`;
@@ -30,10 +33,10 @@ const EventViewer = () => {
                 EventClass: filters.eventClass || '',
                 EventRequestId: filters.requestId || '',
                 severity: filters.severity || '',
-                fromDate: formatToTibco(filters.fromDate),
-                toDate: formatToTibco(filters.toDate),
-                fromHour: `${filters.fromHour}:${filters.fromMinute}`,
-                toHour: `${filters.toHour}:${filters.toMinute}`,
+                fromDate: formatToTibco(fromDateParts[0]),
+                toDate: formatToTibco(toDateParts[0]),
+                fromHour: fromDateParts[1] || '00:00',
+                toHour: toDateParts[1] || '23:59',
                 EventId: filters.eventId || '',
                 token: token,
                 selfNetworkID: currentNetworkId
@@ -54,7 +57,7 @@ const EventViewer = () => {
                 setResults(normalizedData);
 
                 if (normalizedData.length > 0) {
-                    setIsOpen(false); // סגירת פילטרים כשיש תוצאות
+                    setIsOpen(false);
                     toast.success(`נמצאו ${normalizedData.length} אירועים`);
                 } else {
                     toast.info(msgBody || "לא נמצאו רשומות");

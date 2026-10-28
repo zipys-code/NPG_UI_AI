@@ -1,4 +1,3 @@
-import { APP_CONFIG } from "@/config";
 import { toast } from "sonner";
 import { GetMenuListResponse } from '../types/menu';
 import { GetLOVResponse } from '../types/lov';
@@ -6,7 +5,7 @@ import { formatForTibco } from '../lib/utils';
 
 export const apiRequest = async (endpoint: string, data: any) => {
     try {
-        const response = await fetch(`${APP_CONFIG.BASE_URL}${endpoint}`, {
+        const response = await fetch(`${(window as any).APP_CONFIG.BASE_URL}${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
@@ -14,10 +13,11 @@ export const apiRequest = async (endpoint: string, data: any) => {
 
         if (!response.ok) throw new Error("שגיאת תקשורת");
 
-        let rawText = await response.text();
+        const rawText = await response.text();
 
         // ניקוי תווים (הלוגיקה הקיימת שלך)
-        let fixedText = rawText.replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
+        // eslint-disable-next-line no-control-regex
+        const fixedText = rawText.replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
             .replace(/\\'/g, "'")
             .replace(/\x5C'/g, "'");
 
@@ -70,7 +70,7 @@ export const fetchMenuList = async (): Promise<GetMenuListResponse | null> => {
     const payload = {
         getIn: {
             roleID: "NPG_ADMINISTRATOR",
-            selfNetworkID: APP_CONFIG.DEFAULT_SELFNETWORKID
+            selfNetworkID: (window as any).APP_CONFIG.DEFAULT_SELFNETWORKID
         }
     };
     return await apiRequest("/GetMenuList", payload);
@@ -78,7 +78,7 @@ export const fetchMenuList = async (): Promise<GetMenuListResponse | null> => {
 
 export const fetchLOVs = async (): Promise<GetLOVResponse | null> => {
     const payload = {
-        getIn: { selfNetworkID: APP_CONFIG.DEFAULT_SELFNETWORKID }
+        getIn: { selfNetworkID: (window as any).APP_CONFIG.DEFAULT_SELFNETWORKID }
     };
 
     const response = await apiRequest("/getLOV", payload);

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Calendar, Clock, AlertCircle, Filter } from 'lucide-react';
-import { toast } from "sonner";
+import React, { useState } from 'react';
+import { Filter, AlertCircle } from 'lucide-react';
+import { NpgDatePicker } from '../Share/NpgDatePicker'; // הייבוא החדש
 
 export const HistoryFilters = ({ initialTaskId, onSearch, actionTypeList = [] }: any) => {
     const [errors, setErrors] = useState<any>({});
@@ -28,7 +28,7 @@ export const HistoryFilters = ({ initialTaskId, onSearch, actionTypeList = [] }:
             newErrors.general = "יש לבחור שם פעולה או שיטת הפעלה לביצוע חיפוש כללי";
         }
 
-        // ולידציה 2: בדיקת תאריכים
+        // ולידציה 2: בדיקת תאריכים (נשארת זהה לחלוטין)
         const from = new Date(`${filters.dateFrom}T${filters.timeFrom}`);
         const to = new Date(`${filters.dateTo}T${filters.timeTo}`);
         if (from > to) {
@@ -41,9 +41,20 @@ export const HistoryFilters = ({ initialTaskId, onSearch, actionTypeList = [] }:
         onSearch(filters);
     };
 
+    // פונקציית עזר לפיצול מחרוזת ה-NpgDatePicker חזרה לסטייט המקורי
+    const handleDateChange = (val: string, dateField: string, timeField: string) => {
+        if (!val) return;
+        const [d, t] = val.split('T');
+        setFilters(prev => ({ ...prev, [dateField]: d, [timeField]: t || '00:00' }));
+        setErrors((prev: any) => {
+            const newErr = { ...prev };
+            delete newErr.dates;
+            return newErr;
+        });
+    };
+
     return (
-        <div className="bg-white border border-slate-200 rounded-xl p-5 mb-6 shadow-sm">
-            {/* כותרת הפילטרים */}
+        <div className="bg-white border border-slate-200 rounded-xl p-5 mb-6 shadow-sm rtl" dir="rtl">
             <div className="flex items-center gap-2 mb-5 text-slate-700 font-bold text-sm border-b border-slate-200 pb-3">
                 <div className="bg-[#4B9CD3] p-1 rounded-md text-white shadow-sm">
                     <Filter size={14} />
@@ -55,42 +66,27 @@ export const HistoryFilters = ({ initialTaskId, onSearch, actionTypeList = [] }:
                 </span>
             </div>
 
-            {/* מיכל הפילטרים */}
             <div className="flex flex-wrap gap-x-12 gap-y-4 items-start">
-
-                {/* עמודה 1: טווח תאריכים */}
+                {/* עמודה 1: טווח תאריכים (שודרג עם הקומפוננטה שלנו) */}
                 <div className={`space-y-3 p-2 rounded-lg transition-all ${errors.dates ? 'bg-red-50/50 ring-1 ring-red-100' : ''}`}>
-                    <div className="flex items-center gap-3">
-                        <label className="text-[11px] font-bold text-slate-500 w-16 shrink-0">מתאריך:</label>
-                        <div className="flex gap-2">
-                            <input
-                                type="date"
-                                className={`border rounded px-2 py-1.5 text-xs w-36 outline-none ${errors.dates ? 'border-red-400' : 'border-slate-200 focus:border-[#4B9CD3]'}`}
-                                value={filters.dateFrom}
-                                onChange={e => { setFilters({ ...filters, dateFrom: e.target.value }); setErrors({}); }}
-                            />
-                            <input
-                                type="time"
-                                className={`border rounded px-2 py-1.5 text-xs w-24 outline-none ${errors.dates ? 'border-red-400' : 'border-slate-200 focus:border-[#4B9CD3]'}`}
-                                value={filters.timeFrom}
-                                onChange={e => { setFilters({ ...filters, timeFrom: e.target.value }); setErrors({}); }}
+                    <div className="flex items-start gap-3 min-h-[32px]">
+                        <label className="text-[11px] font-bold text-slate-500 w-16 shrink-0 mt-1.5">מתאריך:</label>
+                        <div className="w-[200px]">
+                            <NpgDatePicker
+                                value={`${filters.dateFrom}T${filters.timeFrom}`}
+                                onChange={(val) => handleDateChange(val, 'dateFrom', 'timeFrom')}
+                                showTime={true}
+                                error={errors.dates ? " " : undefined} // מעביר שגיאה רק למסגרת האדומה
                             />
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <label className="text-[11px] font-bold text-slate-500 w-16 shrink-0">עד תאריך:</label>
-                        <div className="flex gap-2">
-                            <input
-                                type="date"
-                                className={`border rounded px-2 py-1.5 text-xs w-36 outline-none ${errors.dates ? 'border-red-400' : 'border-slate-200 focus:border-[#4B9CD3]'}`}
-                                value={filters.dateTo}
-                                onChange={e => { setFilters({ ...filters, dateTo: e.target.value }); setErrors({}); }}
-                            />
-                            <input
-                                type="time"
-                                className={`border rounded px-2 py-1.5 text-xs w-24 outline-none ${errors.dates ? 'border-red-400' : 'border-slate-200 focus:border-[#4B9CD3]'}`}
-                                value={filters.timeTo}
-                                onChange={e => { setFilters({ ...filters, timeTo: e.target.value }); setErrors({}); }}
+                    <div className="flex items-start gap-3 min-h-[32px]">
+                        <label className="text-[11px] font-bold text-slate-500 w-16 shrink-0 mt-1.5">עד תאריך:</label>
+                        <div className="w-[200px]">
+                            <NpgDatePicker
+                                value={`${filters.dateTo}T${filters.timeTo}`}
+                                onChange={(val) => handleDateChange(val, 'dateTo', 'timeTo')}
+                                showTime={true}
                             />
                         </div>
                     </div>
@@ -128,7 +124,6 @@ export const HistoryFilters = ({ initialTaskId, onSearch, actionTypeList = [] }:
                 </div>
             </div>
 
-            {/* שורת הכפתור - בדיוק כמו ב-Events */}
             <div className="flex justify-start gap-2 mt-6 pt-3 border-t border-slate-100">
                 <button
                     type="button"

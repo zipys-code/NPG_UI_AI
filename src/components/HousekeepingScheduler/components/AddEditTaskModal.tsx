@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings, Calendar, Info, Send } from 'lucide-react';
+import { X, Settings, Info, Send } from 'lucide-react';
 import { useApp } from "@/context/AppContext";
 import { apiRequest } from "@/services/api";
 import { toast } from "sonner";
+import { NpgDatePicker } from '../../Share/NpgDatePicker'; // שימי לב לנתיב
 
 interface AddEditTaskModalProps {
     isOpen: boolean;
@@ -20,8 +21,6 @@ const unitMapping: Record<string, string> = {
     'שבועות': 'WEEKS',
     'חודשים': 'MONTHS',
 };
-
-
 
 export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTypes, onSuccess }: AddEditTaskModalProps) => {
     const { currentNetworkId, currentUser, token } = useApp();
@@ -41,7 +40,6 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
 
     useEffect(() => {
         if (isOpen && mode === 'edit' && initialData) {
-            // 1. מיפוי הפוך מאנגלית לעברית עבור ה-Select
             const reverseUnitMapping: Record<string, string> = {
                 'MINUTES': 'דקות',
                 'HOURS': 'שעות',
@@ -50,7 +48,6 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
                 'MONTHS': 'חודשים'
             };
 
-            // 2. פירוק ה-CSV של הפרמטרים (הפסיקים)
             const existingParams: Record<string, string> = {};
             const actionDef = actionTypes.find(at => at.actionTypeID === initialData.actionTypeId);
 
@@ -66,14 +63,12 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
                 });
             }
 
-            // 3. חילוץ תאריך ושעה
             const [datePart, timePart] = (initialData.startActivationDate || "").split(' ');
             const formattedDate = datePart && datePart.includes('/')
                 ? datePart.split('/').reverse().join('-')
                 : new Date().toISOString().split('T')[0];
 
-            // 4. קביעת היחידה לתצוגה (חשוב!)
-            const rawUnit = initialData.repeatTimeUnit; // מגיע מהשרת כ-WEEKS
+            const rawUnit = initialData.repeatTimeUnit;
             const displayUnit = initialData.activationMode === 'חד פעמי'
                 ? 'פעם אחת'
                 : (reverseUnitMapping[rawUnit] || rawUnit || 'שבועות');
@@ -86,10 +81,9 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
                 startDate: formattedDate,
                 startTime: timePart || '12:00',
                 repeatInterval: initialData.repeatTimeInterval || '01',
-                repeatUnit: displayUnit // עכשיו זה יהיה "שבועות" וה-Select יזהה אותו!
+                repeatUnit: displayUnit
             });
         } else if (isOpen && mode === 'add') {
-            // איפוס להוספה
             setFormData({
                 taskDesc: '', actionTypeID: '', params: {},
                 scheduleType: 'בתאריך', startDate: new Date().toISOString().split('T')[0],
@@ -99,11 +93,7 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
     }, [isOpen, initialData, mode, actionTypes]);
 
     const handleActionTypeChange = (typeId: string) => {
-        // עכשיו actionTypes מכיל את הנתונים המוצלבים שבנינו למעלה
         const selectedAction = actionTypes.find((at: any) => at.actionTypeID === typeId);
-
-        console.log("Selected Action Object:", selectedAction);
-
         const newParams: Record<string, string> = {};
         if (selectedAction?.actionParams?.row) {
             const rows = selectedAction.actionParams.row;
@@ -111,12 +101,7 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
                 newParams[p.paramName] = p.paramValue || "";
             });
         }
-
-        setFormData(prev => ({
-            ...prev,
-            actionTypeID: typeId,
-            params: newParams
-        }));
+        setFormData(prev => ({ ...prev, actionTypeID: typeId, params: newParams }));
     };
 
     const updateParam = (name: string, value: string) => {
@@ -128,37 +113,30 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
         const now = new Date();
         const selectedDateTime = new Date(`${formData.startDate}T${formData.startTime}`);
 
-        // 1. ולידציה על תיאור משימה
         if (!formData.taskDesc.trim()) {
             newErrors.taskDesc = "חובה להזין תיאור משימה";
         }
-
-        // 2. ולידציה על שם פעולה
         if (!formData.actionTypeID || formData.actionTypeID === "" || formData.actionTypeID === "select") {
             newErrors.actionTypeID = "חובה לבחור סוג פעולה";
         }
-
-        // 3. ולידציה על תאריך (רק אם נבחר 'בתאריך')
         if (formData.scheduleType === 'בתאריך') {
             if (selectedDateTime < now) {
                 newErrors.startDate = "לא ניתן לבחור מועד התחלה בעבר";
             }
         }
-
         setErrors(newErrors);
-        return Object.keys(newErrors).length === 0; // מחזיר true אם אין שגיאות
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async () => {
-        if (!validateForm()) return; // עצירה אם יש שגיאות ולידציה
+        if (!validateForm()) return;
         setIsSubmitting(true);
 
         const isOnce = formData.repeatUnit === 'פעם אחת';
-        const isStartUp = formData.scheduleType === 'בעליה'; // זיהוי מצב בעלייה
+        const isStartUp = formData.scheduleType === 'בעליה';
         const isImmediate = formData.scheduleType === 'מיידי';
         const shouldSendEmptyRepeat = isImmediate || isStartUp || isOnce;
 
-        // א. הכנת רשימת הפרמטרים במבנה row
         const paramRows = Object.entries(formData.params).map(([name, value]) => ({
             paramName: name,
             paramValue: value
@@ -167,17 +145,16 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
         const getScheduledType = () => {
             if (formData.scheduleType === 'מיידי') return 'immediate';
             if (formData.scheduleType === 'בעליה') return 'startUp';
-            return 'date'; // עבור "בתאריך"
+            return 'date';
         };
 
-        // ב. בניית ה-Payload לפי ה-XSD ששלחת
         const payload = {
             setIn: {
                 token: token,
                 user: currentUser?.name || "אורח",
                 selfNetworkID: currentNetworkId,
                 data: {
-                    mode: mode.toUpperCase(), // "ADD" או "EDIT" (או מה שהשרת מצפה ב-mode)
+                    mode: mode.toUpperCase(),
                     taskID: mode === 'edit' ? initialData.taskID : "-1",
                     taskDesc: formData.taskDesc,
                     actionParamList: {
@@ -186,7 +163,6 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
                     },
                     taskDateTime: {
                         selectedValue: getScheduledType(),
-                        // המרה לפורמט dd/mm/yyyy אם השרת דורש, או השארת yyyy-mm-dd
                         date: formData.startDate.split('-').reverse().join('/'),
                         time: formData.startTime
                     },
@@ -194,27 +170,22 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
                         repeatInterval: shouldSendEmptyRepeat ? "-1" : formData.repeatInterval,
                         repeatTimeUnit: shouldSendEmptyRepeat ? "-1" : (unitMapping[formData.repeatUnit] || formData.repeatUnit)
                     },
-
                     byStartFlag: formData.scheduleType === 'בעליה' ? 'true' : 'false'
                 }
             }
         };
 
         try {
-            console.log("Sending Payload:", payload);
             const response = await apiRequest("/SetHousekeepingScheduler", payload);
-
-            // בדיקת הצלחה לפי msgCode (בדרך כלל 1000)
             const notification = response?.setOut?.notification?.msg?.[0];
             if (notification?.msgCode === "1000") {
                 toast.success(mode === 'add' ? "המשימה נוספה בהצלחה" : "המשימה עודכנה בהצלחה");
-                onClose(); // סגירת המודאל
+                onClose();
                 onSuccess();
             } else {
                 toast.error(notification?.msgBody || "ארעה שגיאה בשמירת הנתונים");
             }
         } catch (error) {
-            console.error("Submit Error:", error);
             toast.error("שגיאת תקשורת מול השרת");
         } finally {
             setIsSubmitting(false);
@@ -225,10 +196,7 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
 
     return (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 backdrop-blur-[1px] p-4 rtl" dir="rtl">
-            {/* הרחבנו את המודאל ל-max-w-3xl כדי שהשדות לא יצאו מהמסגרת */}
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
-
-                {/* Header - bg-blue-600 כבקשתך */}
                 <div className="bg-blue-600 px-6 py-4 flex justify-between items-center text-white shrink-0 shadow-md">
                     <div className="flex items-center gap-3">
                         <Settings size={20} />
@@ -241,9 +209,7 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
                     </button>
                 </div>
 
-                {/* Body */}
                 <div className="p-6 overflow-y-auto space-y-6 bg-[#fcfcfc] max-h-[60vh]">
-
                     {/* Task Details Frame */}
                     <div className="space-y-4 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm relative pt-6">
                         <div className="absolute top-0 right-6 -translate-y-1/2 bg-white px-2 text-[10px] font-black text-blue-600 uppercase tracking-widest border border-slate-100 rounded-full">
@@ -259,13 +225,9 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
                                     readOnly={mode === 'edit'}
                                     onChange={(e) => {
                                         setFormData({ ...formData, taskDesc: e.target.value });
-                                        if (errors.taskDesc) setErrors({ ...errors, taskDesc: '' }); // ניקוי שגיאה בזמן הקלדה
+                                        if (errors.taskDesc) setErrors({ ...errors, taskDesc: '' });
                                     }}
-                                    /* className={`border rounded px-2 py-1.5 text-xs outline-none transition-all ${errors.taskDesc ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'
-                                        }`} */
-                                    className={`border rounded px-2 py-1.5 text-xs outline-none transition-all 
-                                            ${errors.taskDesc ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'} 
-                                            ${mode === 'edit' ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'}`}
+                                    className={`border rounded px-2 py-1.5 text-xs outline-none transition-all ${errors.taskDesc ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'} ${mode === 'edit' ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'}`}
                                 />
                                 {errors.taskDesc && <span className="text-[10px] text-red-500 font-bold">{errors.taskDesc}</span>}
                             </div>
@@ -278,11 +240,7 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
                                         handleActionTypeChange(e.target.value);
                                         if (errors.actionTypeID) setErrors({ ...errors, actionTypeID: "" });
                                     }}
-                                    /* className={`border rounded px-2 py-1.5 text-xs outline-none bg-white cursor-pointer font-medium transition-all ${errors.actionTypeID ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'
-                                        }`} */
-                                    className={`border rounded px-2 py-1.5 text-xs outline-none transition-all 
-                                            ${errors.taskDesc ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'} 
-                                            ${mode === 'edit' ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'}`}
+                                    className={`border rounded px-2 py-1.5 text-xs outline-none transition-all ${errors.actionTypeID ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'} ${mode === 'edit' ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'}`}
                                 >
                                     <option value="">-- בחר --</option>
                                     {actionTypes.map((type: any) => (
@@ -295,7 +253,6 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
                             </div>
                         </div>
 
-                        {/* Dynamic Parameters Grid */}
                         {Object.keys(formData.params).length > 0 && (
                             <div className="mt-2 border rounded-xl overflow-hidden border-slate-100 bg-slate-50/20 shadow-inner">
                                 <table className="w-full text-right">
@@ -343,23 +300,18 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
                             </div>
 
                             {formData.scheduleType === 'בתאריך' && (
-                                <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right-2">
-                                    <div className="flex flex-col gap-1">
-                                        <input
-                                            type="date"
-                                            className={`border rounded px-2 py-1.5 text-xs w-36 outline-none ${errors.startDate ? 'border-red-500 bg-red-50/30' : 'border-slate-200 focus:border-blue-600'
-                                                }`}
-                                            value={formData.startDate}
-                                            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                                        />
-                                        {errors.startDate && <span className="text-[10px] text-red-500 font-bold max-w-[150px]">{errors.startDate}</span>}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="time"
-                                            className="border border-slate-200 rounded px-2 py-1.5 text-xs w-24 outline-none focus:border-blue-600 font-medium text-center"
-                                            value={formData.startTime}
-                                            onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                                <div className="flex items-start gap-3 animate-in fade-in slide-in-from-right-2">
+                                    <div className="w-[280px]">
+                                        <NpgDatePicker
+                                            value={`${formData.startDate}T${formData.startTime}`}
+                                            onChange={(val) => {
+                                                if (!val) return;
+                                                const [d, t] = val.split('T');
+                                                setFormData({ ...formData, startDate: d, startTime: t || '00:00' });
+                                                if (errors.startDate) setErrors({ ...errors, startDate: '' });
+                                            }}
+                                            showTime={true}
+                                            error={errors.startDate}
                                         />
                                     </div>
                                 </div>
@@ -371,13 +323,11 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
                                 <div className="flex items-center gap-3">
                                     <label className="text-[11px] font-bold text-slate-500 w-20">ביצוע כל:*</label>
                                     <div className="flex gap-2">
-                                        {/* הצגה מותנית של שדה המספר - מוסתר אם נבחר "פעם אחת" */}
                                         {formData.repeatUnit !== 'פעם אחת' && (
                                             <input
                                                 type="number"
                                                 min="1"
-                                                className={`w-16 border rounded px-2 py-1.5 text-xs text-center outline-none transition-all ${errors.repeatInterval ? 'border-red-500 bg-red-50' : 'border-slate-200 focus:border-blue-600'
-                                                    }`}
+                                                className={`w-16 border rounded px-2 py-1.5 text-xs text-center outline-none transition-all ${errors.repeatInterval ? 'border-red-500 bg-red-50' : 'border-slate-200 focus:border-blue-600'}`}
                                                 value={formData.repeatInterval}
                                                 onChange={(e) => setFormData({ ...formData, repeatInterval: e.target.value })}
                                             />
@@ -387,7 +337,6 @@ export const AddEditTaskModal = ({ isOpen, onClose, mode, initialData, actionTyp
                                             value={formData.repeatUnit}
                                             onChange={(e) => {
                                                 const unit = e.target.value;
-                                                // עדכון ה-unit ואיפוס ה-interval ל-'0' אם זה חד פעמי
                                                 setFormData({
                                                     ...formData,
                                                     repeatUnit: unit,

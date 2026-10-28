@@ -93,7 +93,9 @@ export default function HousekeepingScheduler() {
         return `${day}/${month}/${year}`;
     };
 
-    useEffect(() => { loadTasks(); }, []);
+    useEffect(() => { loadTasks(); },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        []);
 
     useEffect(() => {
         // בכל פעם שעוברים לטאב היסטוריה
@@ -124,7 +126,9 @@ export default function HousekeepingScheduler() {
                 setHistoryData([]);     // מנקים תוצאות ישנות
             }
         }
-    }, [activeTab]); // רץ רק במעבר טאב
+    },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [activeTab]); // רץ רק במעבר טאב
 
     // מעבר להיסטוריה עבור משימה ספציפית (מה שהיה האייקון של המשקפת)
     const viewTaskHistory = (taskId: string) => {

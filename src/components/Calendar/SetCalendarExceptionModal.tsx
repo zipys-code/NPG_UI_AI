@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, CalendarDays, Save, AlertCircle } from 'lucide-react';
+import { X, CalendarDays, AlertCircle } from 'lucide-react';
 import { apiRequest } from "@/services/api";
 import { useApp } from "@/context/AppContext";
 import { toast } from "sonner";
+import { NpgDatePicker } from '../Share/NpgDatePicker';
 
 interface SetCalendarExceptionModalProps {
     isOpen: boolean;
@@ -17,32 +18,28 @@ export const SetCalendarExceptionModal: React.FC<SetCalendarExceptionModalProps>
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [serverError, setServerError] = useState<string | null>(null);
 
+    // פישטנו את הסטייט! רק תאריך וזמנים בפורמט נקי
     const [formData, setFormData] = useState({
-        date: '', // נשמר בפורמט yyyy-mm-dd עבור ה-input
-        fromHour: '00',
-        fromMinute: '00',
-        toHour: '23',
-        toMinute: '59',
+        date: '',
+        fromTime: '00:00',
+        toTime: '23:59',
         isWorkDay: true
     });
 
     const isEdit = !!editData;
 
-    // פונקציית עזר להמרת פורמט תאריך מ-dd/mm/yyyy ל-yyyy-mm-dd עבור ה-HTML Date picker
     const formatDateForInput = (dateStr: string) => {
         if (!dateStr || !dateStr.includes('/')) return '';
         const [d, m, y] = dateStr.split('/');
         return `${y}-${m}-${d}`;
     };
 
-    // פונקציית עזר להמרת תאריך מ-yyyy-mm-dd חזרה ל-dd/mm/yyyy עבור טיבקו
     const formatDateForTIBCO = (dateStr: string) => {
         if (!dateStr) return '';
         const [y, m, d] = dateStr.split('-');
         return `${d}/${m}/${y}`;
     };
 
-    // קבלת תאריך וזמן נוכחי בפורמט טיבקו עבור שדות החובה
     const getNowForTIBCO = () => {
         const now = new Date();
         const d = now.getDate().toString().padStart(2, '0');
@@ -56,41 +53,41 @@ export const SetCalendarExceptionModal: React.FC<SetCalendarExceptionModalProps>
     useEffect(() => {
         if (isOpen) {
             if (isEdit && editData) {
-                const [fH, fM] = (editData.SoBH || "00:00").split(':');
-                const [tH, tM] = (editData.EoBH || "23:59").split(':');
                 setFormData({
                     date: formatDateForInput(editData.date),
-                    fromHour: fH, fromMinute: fM,
-                    toHour: tH, toMinute: tM,
+                    fromTime: editData.SoBH || "00:00",
+                    toTime: editData.EoBH || "23:59",
                     isWorkDay: editData.workDay === "1" || editData.WORK_DAY === "1"
                 });
             } else {
-                // ברירת מחדל למחר
                 const tomorrow = new Date();
                 tomorrow.setDate(tomorrow.getDate() + 1);
                 setFormData({
                     date: tomorrow.toISOString().split('T')[0],
-                    fromHour: '00', fromMinute: '00',
-                    toHour: '23', toMinute: '59',
+                    fromTime: '00:00',
+                    toTime: '23:59',
                     isWorkDay: true
                 });
             }
             setServerError(null);
         }
-    }, [isOpen, editData]);
+    }, [isOpen, editData, isEdit]);
 
     const handleSubmit = async () => {
-        const start = Number(formData.fromHour) * 60 + Number(formData.fromMinute);
-        const end = Number(formData.toHour) * 60 + Number(formData.toMinute);
+        // המרה חכמה ונקייה לבדיקת זמנים
+        const [fH, fM] = formData.fromTime.split(':');
+        const [tH, tM] = formData.toTime.split(':');
+        const start = Number(fH) * 60 + Number(fM);
+        const end = Number(tH) * 60 + Number(tM);
 
         if (start >= end) {
             setServerError("שעת התחלה חייבת להיות מוקדמת משעת סיום");
             return;
         }
 
-        const confirmMessage = isEdit ? "האם את/ה בטוח שברצונך לעדכן את היום החריג?"
-            : "האם את/ה בטוח שברצונך להוסיף יום חריג?";
+        const confirmMessage = isEdit ? "האם את/ה בטוח שברצונך לעדכן את היום החריג?" : "האם את/ה בטוח שברצונך להוסיף יום חריג?";
         if (!window.confirm(confirmMessage)) return;
+
         setServerError(null);
         setIsSubmitting(true);
         const now = getNowForTIBCO();
@@ -99,19 +96,18 @@ export const SetCalendarExceptionModal: React.FC<SetCalendarExceptionModalProps>
             setIn: {
                 mode: isEdit ? "MODIFY_EXCEPTION_DAY" : "ADD_EXCEPTION_DAY",
                 calendarId: calendarId,
-                // אם עריכה - שולחים מקורי, אם חדש - שולחים "עכשיו" כדי לא להשאיר ריק
                 originalDay: isEdit ? editData.date : now.date,
                 originalSobh: isEdit ? editData.SoBH : now.time,
                 date: formatDateForTIBCO(formData.date),
                 workDay: formData.isWorkDay ? "1" : "0",
-                SoBH: `${formData.fromHour}:${formData.fromMinute}`,
-                EoBH: `${formData.toHour}:${formData.toMinute}`,
+                SoBH: formData.fromTime,
+                EoBH: formData.toTime,
                 token: token,
                 selfNetworkID: currentNetworkId,
                 user: currentUser?.name || "אורח",
                 ...(isEdit ? {
-                    originalDay: editData.date, // התאריך המקורי לפני השינוי
-                    originalSobh: editData.SoBH  // השעה המקורית לפני השינוי
+                    originalDay: editData.date,
+                    originalSobh: editData.SoBH
                 } : {})
             }
         };
@@ -134,6 +130,9 @@ export const SetCalendarExceptionModal: React.FC<SetCalendarExceptionModalProps>
         }
     };
 
+    // פונקציית עזר לחילוץ השעה מתוך מחרוזת התאריך המלאה שמחזיר ה-DatePicker
+    const extractTime = (val: string, fallback: string) => val.includes('T') ? val.split('T')[1].substring(0, 5) : fallback;
+
     if (!isOpen) return null;
 
     return (
@@ -147,57 +146,50 @@ export const SetCalendarExceptionModal: React.FC<SetCalendarExceptionModalProps>
                     <button onClick={onClose} className="hover:bg-white/20 p-1.5 rounded-full"><X size={20} /></button>
                 </div>
 
-                <div className="p-8 space-y-5">
+                <div className="p-8 space-y-6">
                     {serverError && (
                         <div className="p-3 bg-red-50 border-r-4 border-red-500 text-red-700 text-xs font-bold flex items-center gap-2 animate-in fade-in">
                             <AlertCircle size={16} /> {serverError}
                         </div>
                     )}
 
-                    <div>
-                        <label className="block text-xs font-bold text-slate-500 mb-1 text-right">בחר תאריך *</label>
-                        {/* שימוש ב-input מסוג date עבור לוח שנה מובנה */}
-                        <input
-                            type="date"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border-blue-500 outline-none"
+                    {/* קומפוננטת התאריך הרגילה שלנו */}
+                    <div className="w-full">
+                        <NpgDatePicker
+                            label="בחר תאריך *"
                             value={formData.date}
-                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                            onChange={(val) => setFormData({ ...formData, date: val })}
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="block text-xs font-bold text-slate-500 text-right">משעה</label>
-                            <div className="flex gap-1" dir="ltr">
-                                <select className="border rounded-lg p-2 text-sm w-full" value={formData.fromHour} onChange={(e) => setFormData({ ...formData, fromHour: e.target.value })}>
-                                    {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
-                                </select>
-                                <select className="border rounded-lg p-2 text-sm w-full" value={formData.fromMinute} onChange={(e) => setFormData({ ...formData, fromMinute: e.target.value })}>
-                                    {["00", "15", "30", "45", "59"].map(m => <option key={m} value={m}>{m}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="space-y-1">
-                            <label className="block text-xs font-bold text-slate-500 text-right">עד שעה</label>
-                            <div className="flex gap-1" dir="ltr">
-                                <select className="border rounded-lg p-2 text-sm w-full" value={formData.toHour} onChange={(e) => setFormData({ ...formData, toHour: e.target.value })}>
-                                    {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
-                                </select>
-                                <select className="border rounded-lg p-2 text-sm w-full" value={formData.toMinute} onChange={(e) => setFormData({ ...formData, toMinute: e.target.value })}>
-                                    {["00", "15", "30", "45", "59"].map(m => <option key={m} value={m}>{m}</option>)}
-                                </select>
-                            </div>
-                        </div>
+                    <div className="grid grid-cols-2 gap-6">
+                        {/* שימוש בקומפוננטה שלנו רק עבור שעה */}
+                        <NpgDatePicker
+                            label="משעה"
+                            showDate={false} // מכבה את התאריך
+                            showTime={true}  // מדליק את השעה
+                            // אנחנו משדכים את התאריך לשעה רק כדי שהספרייה תדע לפענח את זה, וב-onChange גוזרים חזרה רק את השעה
+                            value={`${formData.date || '2026-01-01'}T${formData.fromTime}`}
+                            onChange={(val) => setFormData({ ...formData, fromTime: extractTime(val, '00:00') })}
+                        />
+
+                        <NpgDatePicker
+                            label="עד שעה"
+                            showDate={false}
+                            showTime={true}
+                            value={`${formData.date || '2026-01-01'}T${formData.toTime}`}
+                            onChange={(val) => setFormData({ ...formData, toTime: extractTime(val, '23:59') })}
+                        />
                     </div>
 
-                    <div className="flex items-center gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100 cursor-pointer" onClick={() => setFormData({ ...formData, isWorkDay: !formData.isWorkDay })}>
-                        <input type="checkbox" className="w-5 h-5 accent-blue-600 cursor-pointer" checked={formData.isWorkDay} onChange={(e) => setFormData({ ...formData, isWorkDay: e.target.checked })} />
+                    <div className="flex items-center gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100 cursor-pointer transition-colors hover:bg-blue-50" onClick={() => setFormData({ ...formData, isWorkDay: !formData.isWorkDay })}>
+                        <input type="checkbox" className="w-5 h-5 accent-blue-600 cursor-pointer pointer-events-none" checked={formData.isWorkDay} readOnly />
                         <span className="text-sm font-bold text-blue-800 italic">האם יום עבודה?</span>
                     </div>
                 </div>
 
                 <div className="p-6 bg-slate-50 border-t flex items-center justify-between px-8">
-                    <button onClick={handleSubmit} disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white px-12 py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all active:scale-95 disabled:opacity-50">
+                    <button onClick={handleSubmit} disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white px-12 py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2">
                         {isSubmitting ? <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (isEdit ? "עדכן יום" : "שמור יום חריג")}
                     </button>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600 font-bold text-sm transition-colors">ביטול</button>

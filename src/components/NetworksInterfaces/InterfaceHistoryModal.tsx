@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { X, Search, Calendar, ArrowLeftRight, History, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react'; // הוספנו פה את useEffect
+import { X, Search, History, AlertCircle } from 'lucide-react';
 import { InterfaceHistoryGrid } from './InterfaceHistoryGrid';
+import { NpgDatePicker } from '../Share/NpgDatePicker';
 
 interface HistoryModalProps {
     isOpen: boolean;
@@ -15,7 +16,7 @@ export const InterfaceHistoryModal = ({ isOpen, onClose, operatorName, data, loa
 
     const getLocalDate = () => {
         const now = new Date();
-        const offset = now.getTimezoneOffset() * 60000; // הפרש דקות למילישניות
+        const offset = now.getTimezoneOffset() * 60000;
         const localISOTime = (new Date(now.getTime() - offset)).toISOString().slice(0, 10);
         return localISOTime;
     };
@@ -24,19 +25,29 @@ export const InterfaceHistoryModal = ({ isOpen, onClose, operatorName, data, loa
     const [error, setError] = useState<string | null>(null);
     const [fromDate, setFromDate] = useState(getLocalDate());
     const [toDate, setToDate] = useState(getLocalDate());
+
+    // === התיקון שלנו: איפוס הנתונים בכל פעם שהמודאל נפתח ===
+    useEffect(() => {
+        if (isOpen) {
+            setInterfaceType('');
+            setError(null);
+            setFromDate(getLocalDate());
+            setToDate(getLocalDate());
+        }
+    }, [isOpen, operatorName]); // מופעל כשהמודאל נפתח או כששם המפעיל משתנה
+
     if (!isOpen) return null;
 
     const handleSearchClick = () => {
-        // איפוס שגיאות
         setError(null);
 
-        // ולידציה: בדיקה שמתאריך לא מאוחר מעד תאריך
         if (new Date(fromDate) > new Date(toDate)) {
             setError("טווח תאריכים לא תקין: תאריך ההתחלה חייב להיות מוקדם מתאריך הסיום");
             return;
         }
 
         const formatDate = (dateStr: string, isEnd: boolean) => {
+            if (!dateStr) return "";
             const [y, m, d] = dateStr.split('-');
             return `${d}/${m}/${y} ${isEnd ? '23:59:59' : '00:00:00'}`;
         };
@@ -52,7 +63,6 @@ export const InterfaceHistoryModal = ({ isOpen, onClose, operatorName, data, loa
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4" dir="rtl">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200">
 
-                {/* Header - גובה מצומצם וקבוע */}
                 <div className="bg-blue-600 px-6 py-2.5 flex justify-between items-center text-white shrink-0 shadow-md">
                     <div className="flex items-center gap-3">
                         <History size={20} />
@@ -63,35 +73,33 @@ export const InterfaceHistoryModal = ({ isOpen, onClose, operatorName, data, loa
                     </button>
                 </div>
 
-                {/* Filters Area - קומפקטי בשורה אחת */}
                 <div className="p-3 bg-slate-50 border-b border-slate-200 shrink-0">
                     <div className="flex flex-wrap items-center gap-6">
 
-                        {/* מתאריך */}
                         <div className="flex items-center gap-3">
                             <label className={`text-[11px] font-bold shrink-0 w-16 ${error ? 'text-red-500' : 'text-slate-500'}`}>מתאריך:</label>
-                            <input
-                                type="date"
-                                className={`border rounded px-2 py-1.5 text-xs w-36 outline-none transition-all ${error ? 'border-red-500 bg-red-50' : 'border-slate-200 focus:border-blue-600'
-                                    }`}
-                                value={fromDate}
-                                onChange={(e) => { setFromDate(e.target.value); setError(null); }}
-                            />
+                            <div className="w-36">
+                                <NpgDatePicker
+                                    value={fromDate}
+                                    onChange={(val) => { setFromDate(val); setError(null); }}
+                                    showTime={false}
+                                    error={error ? " " : undefined}
+                                />
+                            </div>
                         </div>
 
-                        {/* עד תאריך */}
                         <div className="flex items-center gap-3">
                             <label className={`text-[11px] font-bold shrink-0 w-16 ${error ? 'text-red-500' : 'text-slate-500'}`}>עד תאריך:</label>
-                            <input
-                                type="date"
-                                className={`border rounded px-2 py-1.5 text-xs w-36 outline-none transition-all ${error ? 'border-red-500 bg-red-50' : 'border-slate-200 focus:border-blue-600'
-                                    }`}
-                                value={toDate}
-                                onChange={(e) => { setToDate(e.target.value); setError(null); }}
-                            />
+                            <div className="w-36">
+                                <NpgDatePicker
+                                    value={toDate}
+                                    onChange={(val) => { setToDate(val); setError(null); }}
+                                    showTime={false}
+                                    error={error ? " " : undefined}
+                                />
+                            </div>
                         </div>
 
-                        {/* סוג ממשק */}
                         <div className="flex items-center gap-3">
                             <label className="text-[11px] font-bold text-slate-500 shrink-0 w-16">סוג ממשק:</label>
                             <select
@@ -105,7 +113,6 @@ export const InterfaceHistoryModal = ({ isOpen, onClose, operatorName, data, loa
                             </select>
                         </div>
 
-                        {/* כפתור חיפוש קטן וצמוד */}
                         <button
                             onClick={handleSearchClick}
                             disabled={loading}
@@ -116,7 +123,6 @@ export const InterfaceHistoryModal = ({ isOpen, onClose, operatorName, data, loa
                         </button>
                     </div>
 
-                    {/* הודעת שגיאה - צפה מתחת לשורה */}
                     {error && (
                         <div className="mt-2 flex items-center gap-1.5 text-red-600 text-[10px] font-bold animate-in fade-in slide-in-from-top-1">
                             <AlertCircle size={12} />
@@ -125,12 +131,10 @@ export const InterfaceHistoryModal = ({ isOpen, onClose, operatorName, data, loa
                     )}
                 </div>
 
-                {/* תוכן הגריד - זה החלק שגדל ומאפשר גלילה פנימית */}
                 <div className="flex-1 overflow-auto p-4 relative bg-white min-h-0">
                     <InterfaceHistoryGrid data={data} />
                 </div>
 
-                {/* Footer - גובה מצומצם ומיושר לשמאל */}
                 <div className="p-3 bg-slate-50 border-t text-left shrink-0">
                     <button onClick={onClose} className="px-6 py-1.5 border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors shadow-sm bg-white">
                         סגור
