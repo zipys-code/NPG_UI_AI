@@ -9,7 +9,7 @@ Vite 5 + React 18 + TypeScript, Tailwind + shadcn/ui (Radix) in `src/components/
 - `npm run dev` – dev server on port **8081**; proxies `/api/*` to `http://localhost:8085` (strips `/api`)
 - `npm run lint` / `npm test` (vitest, jsdom) / `npm run build`
 - `npm run build:iis` -> `dist-iis/`, `npm run build:apache` -> `dist-apache/` (base `/npg-ui-ai/`)
-- Playwright config exists (`playwright.config.ts`) but there are no e2e tests yet.
+- `npm run test:e2e` – Playwright smoke test (`e2e/smoke.spec.ts`): logs in and opens every route, failing on page errors, `/api` 4xx/5xx or error toasts. Runs in installed Edge against the **real TIBCO listener on 8085**, so the listener must be up. Read-only: never add steps that save/delete/add. Test-user credentials (`E2E_USER`, `E2E_PASSWORD`) live in the git-ignored `.env.test`. When adding a route to `App.tsx`, add it to `ROUTES` in the spec.
 
 ## Architecture
 - `src/App.tsx` – bootstrap: loads LOVs, handles login/session, renders header + routes.
@@ -35,4 +35,4 @@ Vite 5 + React 18 + TypeScript, Tailwind + shadcn/ui (Radix) in `src/components/
 - `.env` is tracked in git. Do not put secrets in it.
 - `.env` contains a malformed line (`VITE_LOGIN_REQUIRED:"Y",`) and appears unused; the real config lives in `public/config.js`.
 - `package.json` name is still the Lovable default; README is the Lovable template and is out of date.
-- Test coverage is essentially nil (a single placeholder test), so verify changes with `npm run build` / `npm run lint` and by running the app.
+- Unit coverage is thin: `src/test/api.test.ts` covers `apiRequest` and `formatForTibco` only. Verify UI changes with `npm run lint`, `npm run build`, and `npm run test:e2e`.
