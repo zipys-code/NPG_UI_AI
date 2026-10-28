@@ -1,10 +1,5 @@
-import { test, expect, Page } from "@playwright/test";
-import { existsSync } from "node:fs";
-
-if (existsSync(".env.test")) process.loadEnvFile(".env.test");
-
-const USER = process.env.E2E_USER;
-const PASSWORD = process.env.E2E_PASSWORD;
+import { test, expect } from "@playwright/test";
+import { USER, PASSWORD, login } from "./helpers";
 
 // Read-only screens only: the test never clicks save / delete / add.
 const ROUTES = [
@@ -23,19 +18,6 @@ const ROUTES = [
   "/SummaryActivities",
   "/CodeTables",
 ];
-
-async function login(page: Page) {
-  await page.goto("/");
-  await page.getByPlaceholder("שם משתמש").fill(USER!);
-  await page.getByPlaceholder("סיסמה").fill(PASSWORD!);
-  const domain = page.locator("select");
-  if (await domain.count()) {
-    const value = await domain.locator("option:not([value=''])").first().getAttribute("value");
-    if (value) await domain.selectOption(value);
-  }
-  await page.locator("button[type=submit]").click();
-  await expect(page.getByPlaceholder("שם משתמש")).toBeHidden();
-}
 
 test.describe("smoke: screens load", () => {
   test.skip(!USER || !PASSWORD, "set E2E_USER and E2E_PASSWORD in .env.test");

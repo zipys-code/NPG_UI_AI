@@ -9,7 +9,7 @@ Vite 5 + React 18 + TypeScript, Tailwind + shadcn/ui (Radix) in `src/components/
 - `npm run dev` – dev server on port **8081**; proxies `/api/*` to `http://localhost:8085` (strips `/api`)
 - `npm run lint` / `npm test` (vitest, jsdom) / `npm run build`
 - `npm run build:iis` -> `dist-iis/`, `npm run build:apache` -> `dist-apache/` (base `/npg-ui-ai/`)
-- `npm run test:e2e` – Playwright smoke test (`e2e/smoke.spec.ts`): logs in and opens every route, failing on page errors, `/api` 4xx/5xx or error toasts. Runs in installed Edge against the **real TIBCO listener on 8085**, so the listener must be up. Read-only: never add steps that save/delete/add. Test-user credentials (`E2E_USER`, `E2E_PASSWORD`) live in the git-ignored `.env.test`. When adding a route to `App.tsx`, add it to `ROUTES` in the spec.
+- `npm run test:e2e` – Playwright tests in `e2e/` (`smoke.spec.ts` + read-only search tests in `search.spec.ts`, shared login in `helpers.ts`). Smoke test: logs in and opens every route, failing on page errors, `/api` 4xx/5xx or error toasts. Runs in installed Edge against the **real TIBCO listener on 8085**, so the listener must be up. Read-only: never add steps that save/delete/add. Test-user credentials (`E2E_USER`, `E2E_PASSWORD`) live in the git-ignored `.env.test`. When adding a route to `App.tsx`, add it to `ROUTES` in the spec.
 
 ## Architecture
 - `src/App.tsx` – bootstrap: loads LOVs, handles login/session, renders header + routes.
