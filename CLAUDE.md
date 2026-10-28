@@ -31,7 +31,7 @@ Vite 5 + React 18 + TypeScript, Tailwind + shadcn/ui (Radix) in `src/components/
 - Prefer the existing `ui/` components over adding new libraries.
 
 ## Things to be careful about
-- `dist/`, `dist-iis/`, `dist-apache/` are committed build outputs. Never hand-edit them; rebuild with the matching npm script, and only when asked.
+- `dist-iis/` and `dist-apache/` are the deliverables handed to the customer and are intentionally tracked in git (`dist/` is ignored). Never hand-edit them; regenerate with the matching npm script, only when asked to prepare a release, and bump `VERSION` in `public/config.js` first.
 - `.env` is tracked in git. Do not put secrets in it.
 - `.env` contains a malformed line (`VITE_LOGIN_REQUIRED:"Y",`) and appears unused; the real config lives in `public/config.js`.
 - `package.json` name is still the Lovable default; README is the Lovable template and is out of date.
