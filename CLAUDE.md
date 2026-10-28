@@ -30,9 +30,15 @@ Vite 5 + React 18 + TypeScript, Tailwind + shadcn/ui (Radix) in `src/components/
 - Follow the existing component style in the neighbouring files (modals + filters + grid split per screen).
 - Prefer the existing `ui/` components over adding new libraries.
 
+## Git workflow
+- `main` = released/delivered code. `develop` = integration branch. Never commit directly to either.
+- For every change: branch from `develop` (`feature/<short-name>` or `fix/<short-name>`), commit there, run `npm run lint`, `npm test`, `npm run test:e2e`, then **stop and let the user test it locally** (dev server on 8081 against the TIBCO test environment).
+- Merge to `develop` only after the user approves; merge `develop` to `main` only when the user asks for a release. Never push or merge without being asked.
+- "develop" is a git branch, not a deployed environment.
+
 ## Things to be careful about
 - `dist-iis/` and `dist-apache/` are the deliverables handed to the customer and are intentionally tracked in git (`dist/` is ignored). Never hand-edit them; regenerate with the matching npm script, only when asked to prepare a release, and bump `VERSION` in `public/config.js` first.
-- `.env` is tracked in git. Do not put secrets in it.
+- `.env` is git-ignored (untracked). Do not put secrets in it.
 - `.env` contains a malformed line (`VITE_LOGIN_REQUIRED:"Y",`) and appears unused; the real config lives in `public/config.js`.
 - `package.json` name is still the Lovable default; README is the Lovable template and is out of date.
 - Unit coverage is thin: `src/test/api.test.ts` covers `apiRequest` and `formatForTibco` only. Verify UI changes with `npm run lint`, `npm run build`, and `npm run test:e2e`.
