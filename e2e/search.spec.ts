@@ -20,10 +20,10 @@ test.describe("search screens", () => {
     expect(await problems()).toEqual([]);
   });
 
-  // FIXME: the server returns 0 records for this id (network 320, from 01/03/2026) — confirm id/network.
-  const KNOWN_REQUEST_ID = "NPBZHT260311000273755";
+  // Known request in the test environment (created 2026-02-16). If it is purged/changed, update this id.
+  const KNOWN_REQUEST_ID = "NPPRMI260216000272094";
 
-  test.fixme("process search by known request id shows that request", async ({ page }) => {
+  test("process search by known request id shows that request", async ({ page }) => {
     const problems = trackProblems(page);
     await page.goto("/view-processes");
     await page.getByPlaceholder("NP...").fill(KNOWN_REQUEST_ID);
@@ -31,7 +31,7 @@ test.describe("search screens", () => {
     // locate them by dir=ltr (order: from-date, from-time, to-date, to-time). Use fill(), not typing:
     // typing char-by-char makes react-datepicker parse partial years (e.g. 01/03/0002).
     const fromDate = page.locator("input[dir=ltr]").first();
-    await fromDate.fill("01/03/2026");
+    await fromDate.fill("01/02/2026");
     await fromDate.press("Tab");
     await page.getByRole("button", { name: "בצע חיפוש" }).click();
     await page.waitForLoadState("networkidle");
