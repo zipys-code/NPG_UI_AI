@@ -20,6 +20,27 @@ test.describe("search screens", () => {
     expect(await problems()).toEqual([]);
   });
 
+  // FIXME: the server returns 0 records for this id (network 320, from 01/03/2026) — confirm id/network.
+  const KNOWN_REQUEST_ID = "NPBZHT260311000273755";
+
+  test.fixme("process search by known request id shows that request", async ({ page }) => {
+    const problems = trackProblems(page);
+    await page.goto("/view-processes");
+    await page.getByPlaceholder("NP...").fill(KNOWN_REQUEST_ID);
+    // The default range is today only. The date inputs have no placeholder attribute, so
+    // locate them by dir=ltr (order: from-date, from-time, to-date, to-time). Use fill(), not typing:
+    // typing char-by-char makes react-datepicker parse partial years (e.g. 01/03/0002).
+    const fromDate = page.locator("input[dir=ltr]").first();
+    await fromDate.fill("01/03/2026");
+    await fromDate.press("Tab");
+    await page.getByRole("button", { name: "בצע חיפוש" }).click();
+    await page.waitForLoadState("networkidle");
+
+    await expect(page.getByText("תוצאות (1)")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("cell", { name: KNOWN_REQUEST_ID })).toBeVisible();
+    expect(await problems()).toEqual([]);
+  });
+
   test("process search rejects a malformed request id", async ({ page }) => {
     await page.goto("/view-processes");
     await page.getByPlaceholder("NP...").fill("abc");
