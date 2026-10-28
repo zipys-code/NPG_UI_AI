@@ -85,8 +85,8 @@ describe("apiRequest", () => {
     expect(await apiRequest("/E", {})).toEqual({ a: "xy" });
   });
 
-  it("unescapes \' sequences", async () => {
-    vi.stubGlobal("fetch", mockFetch("{\"group\":{\"a\":\"it\'s\"}}"));
+  it("unescapes backslash-apostrophe sequences", async () => {
+    vi.stubGlobal("fetch", mockFetch(String.raw`{"group":{"a":"it\'s"}}`));
     expect(await apiRequest("/E", {})).toEqual({ a: "it's" });
   });
 
