@@ -26,3 +26,6 @@ dist-ssr
 # Local env and Claude local settings
 .env
 .claude/settings.local.json
+.env.test
+playwright-report/
+test-results/

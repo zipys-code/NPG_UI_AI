@@ -1,10 +1,22 @@
-import { createLovableConfig } from "lovable-agent-playwright-config/config";
+import { defineConfig } from "@playwright/test";
 
-export default createLovableConfig({
-  // Add your custom playwright configuration overrides here
-  // Example:
-  // timeout: 60000,
-  // use: {
-  //   baseURL: 'http://localhost:3000',
-  // },
+// Smoke tests run against the real TIBCO listener (proxied via vite: /api -> localhost:8085).
+// Test-user credentials come from .env.test (git-ignored), see e2e/smoke.spec.ts.
+export default defineConfig({
+  testDir: "./e2e",
+  timeout: 60_000,
+  retries: 0,
+  reporter: [["list"], ["html", { open: "never" }]],
+  use: {
+    baseURL: "http://localhost:8081",
+    channel: "msedge", // use the installed Edge; switch/remove to use Playwright's own browsers
+    trace: "retain-on-failure",
+    screenshot: "only-on-failure",
+  },
+  webServer: {
+    command: "npm run dev",
+    url: "http://localhost:8081",
+    reuseExistingServer: true,
+    timeout: 60_000,
+  },
 });
