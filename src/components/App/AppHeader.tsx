@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { useNavigate } from "react-router-dom";
+import { getAppBaseUrl } from "@/lib/utils";
 
 // ייבוא הקומפוננטה החדשה מהנתיב שיצרת
 import { ProcessFlowDrawer } from "@/components/ProcessFlowDrawer/ProcessFlowDrawer";
@@ -102,7 +103,8 @@ export default function AppHeader() {
     if (window.confirm("האם אתה בטוח שברצונך להתנתק?")) {
       sessionStorage.clear();
       localStorage.clear();
-      window.location.reload();
+      // מעבר למסך הכניסה של האפליקציה; reload() היה מרענן את הנתיב הנוכחי (למשל /view-processes) ומחזיר 404
+      window.location.href = getAppBaseUrl();
     }
   };
 

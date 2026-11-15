@@ -24,6 +24,7 @@ import OperatorManagement from "./components/NetworksInterfaces/OperatorManageme
 import { NPGControlTower } from "./components/ControlTower/NPGControlTower.tsx";
 import SummaryActivities from "./components/SummaryActivities/SummaryActivities.tsx";
 import CodeTables from "./components/CodeTables/CodeTables.tsx";
+import { getAppBaseUrl } from "@/lib/utils";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -225,7 +226,7 @@ const AppContent = () => {
             onClick={() => {
               sessionStorage.clear(); // מחיקת המשתמש והטוקן הישן
               localStorage.clear();   // ליתר ביטחון, אם נשמרו נתונים אחרים
-              window.location.href = "/"; // טעינה מחדש למסך ה-Login
+              window.location.href = getAppBaseUrl(); // מעבר למסך ה-Login של האפליקציה (לא לשורש השרת)
             }}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 transition-all shadow-lg active:scale-95"
           >

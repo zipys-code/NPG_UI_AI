@@ -50,3 +50,13 @@ export const formatForTibco = (dateTimeStr: string) => {
     time: timePart || '00:00'
   };
 };
+/**
+ * Absolute URL path of the application's entry page (login).
+ * Vite fixes BASE_URL at build time (build:apache -> /npg-ui-ai/, build:iis -> /).
+ * In dev the base is "./", which is not a valid absolute path, so use "/".
+ * Used instead of reload()/"/" so logout works from any route (e.g. /npg-ui-ai/view-processes).
+ */
+export const getAppBaseUrl = (): string => {
+  const base = import.meta.env.BASE_URL;
+  return base === "./" ? "/" : base;
+};
