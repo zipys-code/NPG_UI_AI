@@ -48,6 +48,14 @@ export const apiRequest = async (endpoint: string, data: any) => {
                 return null;
             }
 
+            // בדיקת ה-session בשרת (לפני כל שירות):
+            //   9998 - token לא תקין, 9997 - ה-session לא קיים / פג תוקף: חוסם את המסך וחוזר לכניסה
+            //   9996 - תקלה כללית בבדיקה: מטופל בהמשך כהודעת שגיאה רגילה (msgBody מהשרת)
+            if (msgCode && (msgCode.toString() === "9998" || msgCode.toString() === "9997")) {
+                window.dispatchEvent(new CustomEvent('app:session-invalid', { detail: { code: msgCode.toString() } }));
+                return null;
+            }
+
             // בדיקת קוד הצלחה
             if (msgCode && msgCode.toString() !== "1000") {
                 toast.error(msgBody || "שגיאה בפעולה");

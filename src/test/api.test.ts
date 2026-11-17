@@ -80,6 +80,29 @@ describe("apiRequest", () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 
+  it.each(["9998", "9997"])("dispatches app:session-invalid with the code and returns null on code %s", async (code) => {
+    const body = { group: { getOut: { notification: { msg: [{ code, msgBody: "server text" }] } } } };
+    vi.stubGlobal("fetch", mockFetch(JSON.stringify(body)));
+    const listener = vi.fn();
+    window.addEventListener("app:session-invalid", listener);
+    expect(await apiRequest("/E", {})).toBeNull();
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({ code });
+    window.removeEventListener("app:session-invalid", listener);
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("shows the server message as a normal error toast on code 9996 and does not log out", async () => {
+    const body = { group: { getOut: { notification: { msg: [{ code: 9996, msgBody: "תקלה כללית בחיבור. אנא פנה לתמיכה" }] } } } };
+    vi.stubGlobal("fetch", mockFetch(JSON.stringify(body)));
+    const listener = vi.fn();
+    window.addEventListener("app:session-invalid", listener);
+    expect(await apiRequest("/E", {})).toBeNull();
+    expect(listener).not.toHaveBeenCalled();
+    window.removeEventListener("app:session-invalid", listener);
+    expect(toast.error).toHaveBeenCalledWith("תקלה כללית בחיבור. אנא פנה לתמיכה");
+  });
+
   it("strips control characters before parsing", async () => {
     vi.stubGlobal("fetch", mockFetch('{"group":{"a":"x\u0001y"}}'));
     expect(await apiRequest("/E", {})).toEqual({ a: "xy" });
