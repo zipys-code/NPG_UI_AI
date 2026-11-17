@@ -23,6 +23,9 @@ test.describe("smoke: screens load", () => {
   test.skip(!USER || !PASSWORD, "set E2E_USER and E2E_PASSWORD in .env.test");
 
   test("login and open every screen", async ({ page }) => {
+    // 14 screens, each waiting for network idle: takes ~45-60 s alone and more when run in parallel
+    // (every request now also runs the server-side session check), so the default 60 s is too tight.
+    test.setTimeout(150_000);
     const problems: string[] = [];
     let current = "login";
     page.on("pageerror", (e) => problems.push(`[${current}] pageerror: ${e.message}`));

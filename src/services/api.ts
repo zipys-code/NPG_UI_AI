@@ -3,6 +3,59 @@ import { GetMenuListResponse } from '../types/menu';
 import { GetLOVResponse } from '../types/lov';
 import { formatForTibco } from '../lib/utils';
 
+// הודעה גנרית שמוצגת במקום הודעת שרת שחושפת פרטים טכניים (כתובות פנימיות, SOAP, סכמות, חריגות)
+export const GENERIC_SERVER_ERROR = "אירעה שגיאה בפעולה. אם הבעיה נמשכת, יש לפנות לתמיכה.";
+
+const TECHNICAL_MESSAGE = new RegExp(
+    [
+        String.raw`\b\d{1,3}(\.\d{1,3}){3}\b`,        // כתובת IP
+        String.raw`https?:\/\/`,                       // כתובת URL
+        String.raw`<\/?[a-z][^>]*>`,                   // תגיות XML/HTML
+        String.raw`\bxmlns\b|\bwsdl\b|\bsoap\b|\bxsd\b|\bschema\b`,
+        String.raw`\bBW-\d|\bora-\d{3,}|\bjdbc\b|\bjms\b|\bexception\b|stack ?trace|\bat [\w$.]+\(|\bjava\.`,
+        String.raw`\/[\w.-]+\/[\w.-]+\/[\w.-]+`,       // נתיב פנימי עם 3 מקטעים ומעלה
+    ].join("|"),
+    "i",
+);
+
+/** מחזיר הודעה גנרית אם הטקסט נראה טכני; את המקור רושם ל-console בלבד. */
+export const safeServerMessage = (msg: unknown): unknown => {
+    if (typeof msg !== "string" || !TECHNICAL_MESSAGE.test(msg)) return msg;
+    console.error("Technical server message hidden from the UI:", msg);
+    return GENERIC_SERVER_ERROR;
+};
+
+// מנקה הודעות טכניות בתוך אובייקט ה-notification (msgBody כמחרוזת או כ-{ $: ... }), במקום.
+const scrubNotification = (node: any): void => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) { node.forEach(scrubNotification); return; }
+    for (const key of Object.keys(node)) {
+        const value = node[key];
+        if (key === "msgBody" || key === "msg") {
+            if (typeof value === "string") node[key] = safeServerMessage(value);
+            else if (value && typeof value === "object" && typeof value.$ === "string") value.$ = safeServerMessage(value.$);
+            else scrubNotification(value);
+        } else {
+            scrubNotification(value);
+        }
+    }
+};
+
+/** יציאה מהמערכת: מבטל את ה-session בשרת. שולח ולא ממתין (keepalive), ולעולם לא זורק שגיאה. */
+export const notifyLogout = (token: string, networkId: string): void => {
+    try {
+        if (!token) return;
+        void fetch(`${(window as any).APP_CONFIG.BASE_URL}/Logout`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ getIn: { token, selfNetworkID: networkId } }),
+            keepalive: true,
+        }).catch(() => { /* היציאה בדפדפן ממשיכה גם אם הקריאה נכשלה */ });
+    } catch {
+        /* לא חוסם יציאה */
+    }
+};
+
 export const apiRequest = async (endpoint: string, data: any) => {
     try {
         const response = await fetch(`${(window as any).APP_CONFIG.BASE_URL}${endpoint}`, {
@@ -30,6 +83,12 @@ export const apiRequest = async (endpoint: string, data: any) => {
             // חילוץ התוכן הפנימי (LoginResponse או getOut)
             const nested = wrapped.LoginResponse || wrapped.getOut || wrapped;
 
+            // הסתרת פרטים טכניים בהודעות השרת (גם עבור רכיבים שמציגים את ההודעה בעצמם)
+            if (nested && typeof nested === "object") {
+                if (nested.notification) scrubNotification(nested.notification);
+                if (typeof nested.msg === "string") nested.msg = safeServerMessage(nested.msg);
+            }
+
             // חילוץ הודעת שגיאה/הצלחה בצורה גמישה (תומך במערך או אובייקט)
             const notification = nested.notification?.msg || nested;
 
@@ -45,6 +104,14 @@ export const apiRequest = async (endpoint: string, data: any) => {
                 // שליחת אירוע לדפדפן שהאפליקציה צריכה רענון
                 window.dispatchEvent(new CustomEvent('app:config-changed'));
                 // החזרת Promise דחוי כדי שהקומפוננטה לא תמשיך לרוץ
+                return null;
+            }
+
+            // בדיקת ה-session בשרת (לפני כל שירות):
+            //   9998 - token לא תקין, 9997 - ה-session לא קיים / פג תוקף: חוסם את המסך וחוזר לכניסה
+            //   9996 - תקלה כללית בבדיקה: מטופל בהמשך כהודעת שגיאה רגילה (msgBody מהשרת)
+            if (msgCode && (msgCode.toString() === "9998" || msgCode.toString() === "9997")) {
+                window.dispatchEvent(new CustomEvent('app:session-invalid', { detail: { code: msgCode.toString() } }));
                 return null;
             }
 
