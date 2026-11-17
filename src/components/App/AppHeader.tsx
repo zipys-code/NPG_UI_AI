@@ -17,6 +17,7 @@ import {
 import { useApp } from "@/context/AppContext";
 import { useNavigate } from "react-router-dom";
 import { getAppBaseUrl } from "@/lib/utils";
+import { notifyLogout } from "@/services/api";
 
 // ייבוא הקומפוננטה החדשה מהנתיב שיצרת
 import { ProcessFlowDrawer } from "@/components/ProcessFlowDrawer/ProcessFlowDrawer";
@@ -30,7 +31,7 @@ const ICON_MAP: Record<string, any> = {
 };
 
 export default function AppHeader() {
-  const { menu, currentNetworkName, currentUser, setCurrentNetworkId } = useApp();
+  const { menu, currentNetworkName, currentUser, currentNetworkId, token, setCurrentNetworkId } = useApp();
 
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
@@ -101,6 +102,8 @@ export default function AppHeader() {
 
   const handleLogout = () => {
     if (window.confirm("האם אתה בטוח שברצונך להתנתק?")) {
+      // ביטול ה-session גם בשרת (שולח ולא ממתין; אם השירות לא קיים או נכשל, היציאה בדפדפן ממשיכה)
+      notifyLogout(token || currentUser?.token || "", currentNetworkId);
       sessionStorage.clear();
       localStorage.clear();
       // מעבר למסך הכניסה של האפליקציה; reload() היה מרענן את הנתיב הנוכחי (למשל /view-processes) ומחזיר 404

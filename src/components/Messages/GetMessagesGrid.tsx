@@ -73,7 +73,7 @@ export const GetMessagesGrid = ({ data, loading, appliedFilters }: any) => {
     const showXML = (xml: string) => {
         const win = window.open('', '_blank', 'width=800,height=600');
         if (win) {
-            win.document.write(`<pre style="direction: ltr; text-align: left; padding: 20px; font-family: monospace;">${xml.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`);
+            win.document.write(`<pre style="direction: ltr; text-align: left; padding: 20px; font-family: monospace;">${xml.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>`);
             win.document.title = "Message Body";
         }
     };

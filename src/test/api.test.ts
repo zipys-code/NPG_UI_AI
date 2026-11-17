@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 
 import { toast } from "sonner";
-import { apiRequest } from "@/services/api";
+import { apiRequest, notifyLogout, GENERIC_SERVER_ERROR } from "@/services/api";
 import { formatForTibco } from "@/lib/utils";
 
 const mockFetch = (body: string, ok = true) =>
@@ -101,6 +101,50 @@ describe("apiRequest", () => {
     expect(listener).not.toHaveBeenCalled();
     window.removeEventListener("app:session-invalid", listener);
     expect(toast.error).toHaveBeenCalledWith("תקלה כללית בחיבור. אנא פנה לתמיכה");
+  });
+
+  it.each([
+    "Connection to 10.10.14.52:8182 failed",
+    "http://internal-host:8085/Services/NPG failed",
+    "XML Validation Error: schema xmlns:ns0 mismatch",
+    "SOAP fault at /EAI/Services/NPG/general",
+    "ORA-00942: table or view does not exist",
+  ])("shows a generic message instead of the technical server message: %s", async (technical) => {
+    const body = { group: { getOut: { notification: { msg: [{ code: 2001, msgBody: technical }] } } } };
+    vi.stubGlobal("fetch", mockFetch(JSON.stringify(body)));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await apiRequest("/E", {});
+    expect(toast.error).toHaveBeenCalledWith(GENERIC_SERVER_ERROR);
+  });
+
+  it("keeps ordinary Hebrew business messages unchanged", async () => {
+    const body = { group: { getOut: { notification: { msg: [{ code: 2001, msgBody: "מזהה בקשה חייב להתחיל ב-NP (12/05/2026)" }] } } } };
+    vi.stubGlobal("fetch", mockFetch(JSON.stringify(body)));
+    await apiRequest("/E", {});
+    expect(toast.error).toHaveBeenCalledWith("מזהה בקשה חייב להתחיל ב-NP (12/05/2026)");
+  });
+
+  it("also cleans technical messages that components display themselves (code 1000 with an extra message)", async () => {
+    const body = { group: { getOut: { notification: { msg: [{ code: 1000, msgBody: "ok" }, { code: 2002, msgBody: { $: "failed at 10.1.2.3" } }] }, data: { xml: "<a>kept</a>" } } } };
+    vi.stubGlobal("fetch", mockFetch(JSON.stringify(body)));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const res: any = await apiRequest("/E", {});
+    expect(res.getOut.notification.msg[1].msgBody.$).toBe(GENERIC_SERVER_ERROR);
+    expect(res.getOut.notification.msg[0].msgBody).toBe("ok");
+    expect(res.getOut.data.xml).toBe("<a>kept</a>"); // data fields are not touched
+  });
+
+  it("notifyLogout posts the token with keepalive and never throws", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error("network down"));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(() => notifyLogout("NP123W", "320")).not.toThrow();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/Logout");
+    expect(init.keepalive).toBe(true);
+    expect(JSON.parse(init.body)).toEqual({ getIn: { token: "NP123W", selfNetworkID: "320" } });
+    notifyLogout("", "320"); // no token: nothing is sent
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("strips control characters before parsing", async () => {
