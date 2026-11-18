@@ -8,7 +8,7 @@ window.APP_CONFIG = {
 
     // הגדרות גלובליות
     APP_NAME: "מערכת ניוד מספרים NPG",
-    VERSION: "20260628_CS6303",
+    VERSION: "20261118_CS6307",
     LOGIN_REQUIRED: "Y",
     // default token NO LOGIN = NPDUMMY_ + timestamp - need to be dynamic to prevent caching issues
     SESSION_DURATION_MINUTES: 120, // שעתיים
