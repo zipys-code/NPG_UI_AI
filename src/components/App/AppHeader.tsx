@@ -288,7 +288,7 @@ export default function AppHeader() {
                 </p>
 
                 <img
-                  src="/yael-logo.png"
+                  src={`${import.meta.env.BASE_URL}yael-logo.png`}
                   alt="Yael Software"
                   className="h-11 object-contain"
                 />
