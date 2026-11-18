@@ -24,6 +24,7 @@ import OperatorManagement from "./components/NetworksInterfaces/OperatorManageme
 import { NPGControlTower } from "./components/ControlTower/NPGControlTower.tsx";
 import SummaryActivities from "./components/SummaryActivities/SummaryActivities.tsx";
 import CodeTables from "./components/CodeTables/CodeTables.tsx";
+import { getAppBaseUrl } from "@/lib/utils";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -49,6 +50,8 @@ const AppContent = () => {
 
   const [isInitializing, setIsInitializing] = useState(true);
   const [needsReload, setNeedsReload] = useState(false);
+  // קוד הסירוב מהשרת (9998 token לא תקין / 9997 session לא קיים או פג), או null
+  const [sessionInvalid, setSessionInvalid] = useState<string | null>(null);
   const isLoginRequired = (window as any).APP_CONFIG.LOGIN_REQUIRED === "Y";
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -61,6 +64,14 @@ const AppContent = () => {
 
     window.addEventListener('app:config-changed', handleConfigChange);
     return () => window.removeEventListener('app:config-changed', handleConfigChange);
+  }, []);
+
+  // 1ב. מאזין לאירוע "session לא תקין / פג תוקף" מה-API (קודים 9998 / 9997)
+  useEffect(() => {
+    const handleSessionInvalid = (event: Event) =>
+      setSessionInvalid((event as CustomEvent).detail?.code ?? "9997");
+    window.addEventListener('app:session-invalid', handleSessionInvalid);
+    return () => window.removeEventListener('app:session-invalid', handleSessionInvalid);
   }, []);
 
   // 2. אתחול האפליקציה (LOVs, Session, ונתוני תפריט)
@@ -210,22 +221,27 @@ const AppContent = () => {
     []);
 
   // --- תנאי רינדור 1: מסך רענון חוסם (Restart) ---
-  if (needsReload) {
+  if (needsReload || sessionInvalid) {
+    // שינוי קונפיגורציה (9999) או session לא תקין (9998) / פג תוקף (9997): כולם דורשים כניסה מחדש
+    const blockTitle = needsReload ? "דרוש רענון מערכת" : "נדרשת התחברות מחדש";
+    const blockText = needsReload
+      ? "נערכו שינויים בקונפיגורציה. יש לסגור את החלון ולפתוח את האפליקציה בחלון חדש, על מנת לראות את השינויים."
+      : sessionInvalid === "9998"
+        ? "ההתחברות אינה תקפה. יש להתחבר מחדש."
+        : "ההתחברות למערכת פגה. יש להתחבר מחדש.";
     return (
       <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/90 backdrop-blur-md" dir="rtl">
         <div className="bg-white p-10 rounded-2xl shadow-2xl max-w-md text-center border-t-8 border-orange-500">
           <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-6">
             <AlertTriangle size={40} />
           </div>
-          <h2 className="text-2xl font-black text-slate-800 mb-3">דרוש רענון מערכת</h2>
-          <p className="text-slate-600 mb-8 leading-relaxed">
-            נערכו שינויים בקונפיגורציה. יש לסגור את החלון ולפתוח את האפליקציה בחלון חדש, על מנת לראות את השינויים.
-          </p>
+          <h2 className="text-2xl font-black text-slate-800 mb-3">{blockTitle}</h2>
+          <p className="text-slate-600 mb-8 leading-relaxed">{blockText}</p>
           <button
             onClick={() => {
               sessionStorage.clear(); // מחיקת המשתמש והטוקן הישן
               localStorage.clear();   // ליתר ביטחון, אם נשמרו נתונים אחרים
-              window.location.href = "/"; // טעינה מחדש למסך ה-Login
+              window.location.href = getAppBaseUrl(); // מעבר למסך ה-Login של האפליקציה (לא לשורש השרת)
             }}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 transition-all shadow-lg active:scale-95"
           >
